@@ -42,7 +42,7 @@ export function SuppliersPage() {
   const suppliers = useSuppliers();
   const ingredients = useIngredients();
   return (
-    <Page title="Suppliers">
+    <Page title="Suppliers" description="Who you buy from, and which ingredients each supplier can supply.">
       <QueryState query={ingredients}>
         {(ingredientList) => (
           <>

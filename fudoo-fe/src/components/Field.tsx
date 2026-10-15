@@ -1,6 +1,9 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
 
-const control = "w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm";
+const control =
+  "w-full rounded-lg border-0 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 " +
+  "placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-500 " +
+  "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500";
 
 interface FieldProps {
   label: string;
@@ -9,8 +12,8 @@ interface FieldProps {
 
 export function Field({ label, children }: FieldProps) {
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="font-medium text-gray-700">{label}</span>
+    <label className="flex flex-col gap-1.5 text-sm">
+      <span className="font-medium text-slate-700">{label}</span>
       {children}
     </label>
   );

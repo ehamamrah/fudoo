@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { IconName } from "./components/Icon";
 import { IngredientsPage } from "./features/ingredients/IngredientsPage";
 import { MenuItemsPage } from "./features/menu-items/MenuItemsPage";
 import { PurchaseOrderDetailPage } from "./features/purchase-orders/PurchaseOrderDetailPage";
@@ -7,18 +8,20 @@ import { PosPage } from "./features/sales/PosPage";
 import { StockPage } from "./features/stock/StockPage";
 import { SuppliersPage } from "./features/suppliers/SuppliersPage";
 
+export const SECTIONS = ["Overview", "Operations", "Catalog"] as const;
+
 export interface AppRoute {
   path: string;
-  label?: string;
   element: ReactNode;
+  nav?: { label: string; icon: IconName; section: (typeof SECTIONS)[number] };
 }
 
 export const routes: AppRoute[] = [
-  { path: "/", label: "Stock", element: <StockPage /> },
-  { path: "/ingredients", label: "Ingredients", element: <IngredientsPage /> },
-  { path: "/suppliers", label: "Suppliers", element: <SuppliersPage /> },
-  { path: "/menu-items", label: "Menu items", element: <MenuItemsPage /> },
-  { path: "/purchase-orders", label: "Purchase orders", element: <PurchaseOrdersPage /> },
+  { path: "/", element: <StockPage />, nav: { label: "Stock", icon: "stock", section: "Overview" } },
+  { path: "/purchase-orders", element: <PurchaseOrdersPage />, nav: { label: "Purchase orders", icon: "orders", section: "Operations" } },
   { path: "/purchase-orders/:id", element: <PurchaseOrderDetailPage /> },
-  { path: "/pos", label: "POS", element: <PosPage /> },
+  { path: "/pos", element: <PosPage />, nav: { label: "POS", icon: "pos", section: "Operations" } },
+  { path: "/ingredients", element: <IngredientsPage />, nav: { label: "Ingredients", icon: "ingredients", section: "Catalog" } },
+  { path: "/suppliers", element: <SuppliersPage />, nav: { label: "Suppliers", icon: "suppliers", section: "Catalog" } },
+  { path: "/menu-items", element: <MenuItemsPage />, nav: { label: "Menu items", icon: "menu", section: "Catalog" } },
 ];

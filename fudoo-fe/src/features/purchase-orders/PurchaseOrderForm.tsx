@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import type { Ingredient, PurchaseOrderInput, Supplier } from "../../api/types";
 import { Button } from "../../components/Button";
 import { Field, Select } from "../../components/Field";
 import { FormPanel } from "../../components/FormPanel";
+import { TextLink } from "../../components/TextLink";
 import { IngredientLines } from "../ingredients/IngredientLines";
 import { useLineDrafts, type LineDraft } from "../ingredients/useLineDrafts";
 import { useCreatePurchaseOrder } from "./hooks";
@@ -39,7 +40,7 @@ function SupplierSelect({ suppliers, value, onChange }: { suppliers: Supplier[];
 }
 
 function Hint({ children }: { children: ReactNode }) {
-  return <p className="text-sm text-gray-500">{children}</p>;
+  return <p className="text-sm text-slate-500">{children}</p>;
 }
 
 function LineSection({ supplier, offered, drafts }: LineSectionProps) {
@@ -48,7 +49,7 @@ function LineSection({ supplier, offered, drafts }: LineSectionProps) {
   return (
     <Hint>
       {supplier.name} supplies no ingredients yet.{" "}
-      <Link className="text-blue-700 underline" to="/suppliers">Set them on the Suppliers page</Link>.
+      <TextLink to="/suppliers">Set them on the Suppliers page</TextLink>.
     </Hint>
   );
 }

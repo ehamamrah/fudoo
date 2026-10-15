@@ -23,7 +23,7 @@ export function ErrorBanner({ error }: { error: unknown }) {
   if (!error) return null;
   const shortages = error instanceof ApiError ? error.shortages : [];
   return (
-    <div role="alert" className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+    <div role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 ring-1 ring-inset ring-red-200">
       <p>{messageOf(error)}</p>
       {shortages.length > 0 && <ShortageList shortages={shortages} />}
     </div>

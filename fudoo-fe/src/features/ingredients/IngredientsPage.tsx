@@ -23,7 +23,7 @@ function IngredientTable({ ingredients }: { ingredients: Ingredient[] }) {
 export function IngredientsPage() {
   const ingredients = useIngredients();
   return (
-    <Page title="Ingredients">
+    <Page title="Ingredients" description="Everything the kitchen keeps in stock, in a single unit each.">
       <IngredientForm />
       <QueryState query={ingredients}>{(data) => <IngredientTable ingredients={data} />}</QueryState>
     </Page>

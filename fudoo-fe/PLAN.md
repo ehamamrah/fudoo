@@ -23,6 +23,7 @@ src/
 - PO receive form is shown from the API's `can_receive` flag; action buttons from `allowed_actions`. The UI holds no state-machine knowledge.
 - Stock shows Out of stock / In stock only. A "low" threshold needs a backend `reorder_level`; deferred (YAGNI).
 - Supplier ingredient filtering in the PO form is display-only, driven by `Supplier.ingredients` from the API. The backend enforces the rule (`409 ingredient_not_supplied`) and the form shows its `detail` verbatim. Changing the supplier resets the lines.
+- Visual design lives in the shared components (`components/`): sidebar shell with grouped nav (top bar on phones), Inter, slate palette with an orange `brand` accent in `tailwind.config.js`. Pages only compose components, so restyling never touches feature logic.
 - POS keeps one `external_id` per attempt and regenerates it only after a successful sale, so a resubmit after a network failure stays idempotent.
 
 ## Build order (one commit + push per step)

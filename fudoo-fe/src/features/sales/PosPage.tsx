@@ -26,7 +26,7 @@ export function PosPage() {
   const menuItems = useMenuItems();
   const sales = useSales();
   return (
-    <Page title="POS simulator">
+    <Page title="POS simulator" description="Record sales the way the point of sale would. Each sale deducts its recipe from stock.">
       <QueryState query={menuItems}>{(items) => <SaleForm items={items} />}</QueryState>
       <Panel title="Recent sales">
         <QueryState query={sales}>{(data) => <SalesTable sales={data} />}</QueryState>

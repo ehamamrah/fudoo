@@ -40,7 +40,7 @@ export function SaleForm({ items }: { items: MenuItem[] }) {
     <FormPanel title="Ring up a sale" error={create.error} onSubmit={submit}>
       <Field label="Menu item"><MenuItemSelect items={items} value={values.menuItem} onChange={(id) => setField("menuItem", id)} /></Field>
       <Field label="Quantity"><Input required type="number" min={1} step={1} value={values.quantity} onChange={(e) => setField("quantity", e.target.value)} /></Field>
-      <p className="text-xs text-gray-500">External id: <code>{externalId}</code></p>
+      <p className="text-xs text-slate-500">External id: <code>{externalId}</code></p>
       <Button type="submit" className="self-start" disabled={create.isPending}>Record sale</Button>
       {create.data && <SaleResult sale={create.data} />}
     </FormPanel>

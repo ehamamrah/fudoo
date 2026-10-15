@@ -10,5 +10,5 @@ const tones: Record<PurchaseOrderStatus, Tone> = {
 };
 
 export function StatusBadge({ status }: { status: PurchaseOrderStatus }) {
-  return <Badge tone={tones[status]}>{status}</Badge>;
+  return <Badge tone={tones[status]}><span className="capitalize">{status}</span></Badge>;
 }

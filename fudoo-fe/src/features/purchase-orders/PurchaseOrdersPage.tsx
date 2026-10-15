@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import type { PurchaseOrder, PurchaseOrderFilter } from "../../api/types";
 import { Button } from "../../components/Button";
 import { Page } from "../../components/Page";
 import { QueryState } from "../../components/QueryState";
 import { Cell, Row, Table } from "../../components/Table";
+import { TextLink } from "../../components/TextLink";
 import { UpdatedAgo } from "../../components/UpdatedAgo";
 import { formatDateTime } from "../../lib/format";
 import { useIngredients } from "../ingredients/hooks";
@@ -32,7 +32,7 @@ function FilterBar({ value, onChange }: { value: PurchaseOrderFilter; onChange: 
 function OrderRow({ order }: { order: PurchaseOrder }) {
   return (
     <Row>
-      <Cell><Link className="text-blue-700 underline" to={`/purchase-orders/${order.id}`}>PO #{order.id}</Link></Cell>
+      <Cell><TextLink to={`/purchase-orders/${order.id}`}>PO #{order.id}</TextLink></Cell>
       <Cell>{order.supplier_name}</Cell>
       <Cell><StatusBadge status={order.status} /></Cell>
       <Cell>{formatDateTime(order.created_at)}</Cell>
@@ -79,7 +79,7 @@ function NewOrder() {
 
 export function PurchaseOrdersPage() {
   return (
-    <Page title="Purchase orders">
+    <Page title="Purchase orders" description="Order from suppliers and receive deliveries, in full or in part.">
       <NewOrder />
       <OrderList />
     </Page>

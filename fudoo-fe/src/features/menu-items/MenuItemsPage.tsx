@@ -34,7 +34,7 @@ export function MenuItemsPage() {
   const menuItems = useMenuItems();
   const ingredients = useIngredients();
   return (
-    <Page title="Menu items">
+    <Page title="Menu items" description="Dishes and the recipe each one uses from stock.">
       <QueryState query={ingredients}>{(data) => <MenuItemForm ingredients={data} />}</QueryState>
       <QueryState query={menuItems}>{(data) => <MenuItemTable items={data} />}</QueryState>
     </Page>
