@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatQuantity, secondsSince } from "./format";
+import { formatQuantity, isPositiveQuantity, secondsSince } from "./format";
 
 describe("formatQuantity", () => {
   it.each([
@@ -18,5 +18,20 @@ describe("secondsSince", () => {
   it("floors elapsed seconds and never goes negative", () => {
     expect(secondsSince(1000, 4900)).toBe(3);
     expect(secondsSince(5000, 4000)).toBe(0);
+  });
+});
+
+describe("isPositiveQuantity", () => {
+  it.each([
+    ["2000", true],
+    ["0.5", true],
+    [" 3 ", true],
+    ["0", false],
+    ["0.000", false],
+    ["", false],
+    ["-5", false],
+    ["abc", false],
+  ])("%s -> %s", (input, expected) => {
+    expect(isPositiveQuantity(input)).toBe(expected);
   });
 });

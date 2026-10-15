@@ -5,10 +5,10 @@ export interface MockResponse {
   body?: unknown;
 }
 
-export type Routes = Record<string, MockResponse | unknown>;
+export type Routes = Record<string, unknown>;
 
 const isMockResponse = (value: unknown): value is MockResponse =>
-  typeof value === "object" && value !== null && ("status" in value || "body" in value);
+  typeof value === "object" && value !== null && typeof (value as MockResponse).status === "number";
 
 function toResponse(entry: unknown): Response {
   const { status = 200, body = null } = isMockResponse(entry) ? entry : { body: entry };
