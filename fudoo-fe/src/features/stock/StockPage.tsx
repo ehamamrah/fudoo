@@ -4,11 +4,11 @@ import { Page } from "../../components/Page";
 import { QueryState } from "../../components/QueryState";
 import { Cell, Row, Table } from "../../components/Table";
 import { UpdatedAgo } from "../../components/UpdatedAgo";
-import { formatQuantity } from "../../lib/format";
+import { formatQuantity, isEmptyOrZero } from "../../lib/format";
 import { useIngredients } from "../ingredients/hooks";
 
 function StockRow({ ingredient }: { ingredient: Ingredient }) {
-  const out = Number(ingredient.on_hand) === 0;
+  const out = isEmptyOrZero(ingredient.on_hand);
   return (
     <Row className={out ? "bg-red-50" : ""} data-testid={`stock-${ingredient.id}`}>
       <Cell>{ingredient.name}</Cell>

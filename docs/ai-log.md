@@ -86,3 +86,19 @@ Two agents built `fudoo-be` and `fudoo-fe` in parallel against `docs/api-contrac
 
 - The frontend decided whether a PO could take a delivery from a hardcoded `["sent", "received"]` list, duplicating the state machine. The backend already had `can_receive`; it is now part of the API, and the UI uses it.
 - The frontend invented a "low stock" rule from recipe quantities, a business rule in the UI that the brief didn't ask for. Removed, along with a BigInt decimal library that existed only to support it (YAGNI).
+
+## Session 3 — Independent review
+
+A fresh `code-reviewer` agent, with no build context, was asked to look for correctness problems in stock and PO state, contract drift, test gaps on critical paths, and rule violations. It found no blocking defects in the stock or state core. Triage:
+
+| Finding | Decision |
+|---|---|
+| Oversized sale `quantity` causes a DB overflow and a 500 | Fixed: serializer `max_value`, plus a test |
+| PO detail stale after a 409; no polling on the detail page | Fixed: invalidate on settle, poll the detail |
+| No concurrency tests for receiving, cancelling or delivery vs sale | Fixed: three threaded tests; the race helper is shared and looped |
+| Receive form silently dropped invalid lines | Fixed: send them and let the backend's 400 explain |
+| No DB constraint on PO `status`; open-filter test missed `received` | Fixed |
+| Deliveries not idempotent | Documented as a known limitation, with the fix (client delivery id) |
+| Reused `external_id` with a different payload returns 200 | Documented |
+
+Lesson: the agents' own tests covered the sales race but not the purchasing races. A second set of eyes with no build context found the gap.
