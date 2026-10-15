@@ -23,8 +23,8 @@ function EmptyRow({ span }: { span: number }) {
   return <tr><td colSpan={span} className="px-3 py-4 text-center text-gray-500">Nothing here yet.</td></tr>;
 }
 
-export function Row(props: HTMLAttributes<HTMLTableRowElement>) {
-  return <tr className="border-t border-gray-200" {...props} />;
+export function Row({ className = "", ...props }: HTMLAttributes<HTMLTableRowElement>) {
+  return <tr className={`border-t border-gray-200 ${className}`} {...props} />;
 }
 
 export function Cell(props: TdHTMLAttributes<HTMLTableCellElement>) {

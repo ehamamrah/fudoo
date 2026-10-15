@@ -7,7 +7,8 @@ Vite + React 18 + TypeScript (strict) + Tailwind + TanStack Query + React Router
 ```
 src/
   api/         client.ts (fetch wrapper → typed ApiError), types.ts (mirrors contract), one file per resource
-  components/  Button, Field, Table, ErrorBanner, Badge, Page
+  components/  Button, Field, Table, ErrorBanner, Badge, Page, FormPanel, QueryState, UpdatedAgo
+  lib/         quantity display/compare on strings (BigInt thousandths, never float), shared hooks
   features/    stock, ingredients, suppliers, menu-items, purchase-orders, sales — each: hooks.ts + page(s)
   App.tsx      router + nav
 ```
@@ -15,6 +16,13 @@ src/
 - Pages call feature hooks only; hooks wrap TanStack Query.
 - Mutations invalidate affected queries. Stock and open POs poll every 5 s and show "Updated Xs ago".
 - No business rules in the UI: PO buttons come from `allowed_actions`, outstanding quantities from the API, errors from `detail` / `shortages`.
+
+## Decisions taken during the build
+
+- Tailwind v3 with PostCSS. Status: all six steps done.
+- PO receive form is shown only for `sent` / `received` (the contract's receivable statuses); `allowed_actions` covers manual actions only.
+- "Low" stock has no contract field. Displayed as: on_hand is below the per-portion recipe quantity of at least one menu item (exact decimal compare). Replace with a backend `reorder_level` if the contract adds one.
+- POS keeps one `external_id` per attempt and regenerates it only after a successful sale, so a resubmit after a network failure stays idempotent.
 
 ## Build order (one commit + push per step)
 
