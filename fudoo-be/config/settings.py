@@ -80,6 +80,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
     "UNAUTHENTICATED_USER": None,
     "EXCEPTION_HANDLER": "core.exceptions.exception_handler",
+    "DEFAULT_PAGINATION_CLASS": "core.pagination.PageNumberPagination",
     "DATETIME_FORMAT": "%Y-%m-%dT%H:%M:%SZ",
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
 }

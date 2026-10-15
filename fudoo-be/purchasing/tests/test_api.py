@@ -53,13 +53,13 @@ def test_unsupplied_ingredient_returns_409_and_creates_nothing(api, supplier, be
 
 def test_list_newest_first(api, order, supplier):
     newer = PurchaseOrder.objects.create(request_id=new_id(), supplier=supplier)
-    assert [o["id"] for o in api.get("/api/purchase-orders/").json()] == [newer.id, order.id]
+    assert [o["id"] for o in api.get("/api/purchase-orders/").json()["results"]] == [newer.id, order.id]
 
 
 def test_open_filter_returns_only_sent_and_received(api, order_in, supplier, beef):
     lines = [{"ingredient": beef, "quantity_ordered": Decimal("10")}]
     orders = {status: order_in(create_purchase_order(new_id(), supplier, lines)[0], status) for status in Status}
-    listed = {o["id"]: o["status"] for o in api.get("/api/purchase-orders/?status=open").json()}
+    listed = {o["id"]: o["status"] for o in api.get("/api/purchase-orders/?status=open").json()["results"]}
     assert listed == {orders[Status.SENT].id: "sent", orders[Status.RECEIVED].id: "received"}
 
 

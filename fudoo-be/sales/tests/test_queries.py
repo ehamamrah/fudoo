@@ -15,7 +15,7 @@ def test_list_query_count_is_constant(api, kitchen, django_assert_num_queries, s
     for n in range(size):
         record_sale(f"pos-{n}", kitchen(1, f"k{n}").menu_item, 1)
     with django_assert_num_queries(1):
-        assert len(api.get("/api/sales/").json()) == size
+        assert len(api.get("/api/sales/").json()["results"]) == size
 
 
 @pytest.mark.parametrize("size", SIZES)

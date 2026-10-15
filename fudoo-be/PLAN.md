@@ -24,6 +24,7 @@ Only `inventory` writes `Ingredient.on_hand`. Views are thin: parse → service 
 6. **seed:** [done] idempotent `manage.py seed` command.
 7. **supplier items:** [done] supplier ↔ ingredient many-to-many, `GET/PATCH /api/suppliers/{id}/`, `ingredient_not_supplied` on PO creation, seed mappings.
 8. **hardening:** [done] Python 3.15 / Django 6.1 / Postgres 18, `request_id` idempotency for POs and deliveries, `idempotency_conflict` for reused ids, `/api/health/`, env-driven security settings, list caps, constant-query write paths, indexes.
+9. **pagination:** page-number lists with `?search=` (catalog) and `?stock=out` (ingredients), cursor lists (purchase orders, sales), relative `next`/`previous` links (`core.pagination`), `/options/` pickers, `/api/ingredients/summary/`, supplier `supplies`, indexes `ingredient_name` and `purchase_order_newest`.
 
 ## Key tests
 

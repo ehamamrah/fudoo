@@ -10,6 +10,10 @@ class Unit(models.TextChoices):
     PIECE = "pcs"
 
 
+EMPTY = 0
+OUT_OF_STOCK = models.Q(on_hand=EMPTY)
+
+
 class Ingredient(models.Model):
     name = models.CharField(max_length=100)
     unit = models.CharField(max_length=3, choices=Unit.choices)
@@ -17,6 +21,7 @@ class Ingredient(models.Model):
 
     class Meta:
         ordering = ["name"]
+        indexes = [models.Index(fields=["name"], name="ingredient_name")]
         constraints = [
             models.UniqueConstraint(Lower("name"), name="ingredient_name_ci_unique"),
             models.CheckConstraint(
@@ -26,6 +31,10 @@ class Ingredient(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def out_of_stock(self):
+        return self.on_hand == EMPTY
 
 
 class Supplier(models.Model):

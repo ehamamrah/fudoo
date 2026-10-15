@@ -38,3 +38,12 @@ def _run(call, barrier, outcomes, index):
         outcomes[index] = error
     finally:
         connection.close()
+
+
+def walk(api, link):
+    rows = []
+    while link:
+        page = api.get(link).json()
+        rows += page["results"]
+        link = page["next"]
+    return rows

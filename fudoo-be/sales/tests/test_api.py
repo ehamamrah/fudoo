@@ -68,11 +68,11 @@ def test_invalid_sale_rejected(api, burger, field, body):
     assert field in response.json()
 
 
-def test_list_latest_fifty_newest_first(api, burger, beef, bun, stock_up):
+def test_list_is_newest_first_in_pages_of_25(api, burger, beef, bun, stock_up):
     stock_up((beef, "100000"), (bun, "100"))
-    for n in range(52):
+    for n in range(27):
         sell(api, f"pos-{n}", burger)
     data = api.get("/api/sales/").json()
-    assert len(data) == 50
-    assert data[0]["external_id"] == "pos-51"
-    assert Sale.objects.count() == 52
+    assert (len(data["results"]), data["results"][0]["external_id"], data["previous"]) == (25, "pos-26", None)
+    assert data["next"].startswith("/api/sales/?cursor=")
+    assert "count" not in data

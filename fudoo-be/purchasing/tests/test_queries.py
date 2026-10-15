@@ -37,7 +37,7 @@ def delivery_body(order, request_id):
 def test_list_query_count_is_constant(api, orders, django_assert_num_queries, size, path):
     orders(size)
     with django_assert_num_queries(3):
-        assert len(api.get(path).json()) == size
+        assert len(api.get(path).json()["results"]) == size
 
 
 @pytest.mark.parametrize("size", SIZES)

@@ -4,6 +4,12 @@ MAX_LIST_ITEMS = 100
 MAX_PRIMARY_KEY = 2**63 - 1
 
 
+def validated_query(serializer_class, request):
+    serializer = serializer_class(data=request.query_params)
+    serializer.is_valid(raise_exception=True)
+    return serializer.validated_data
+
+
 def reject_duplicates(items, key, message):
     values = [item[key] for item in items]
     if len(values) != len(set(values)):

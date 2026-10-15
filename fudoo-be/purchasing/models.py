@@ -25,6 +25,7 @@ class PurchaseOrder(models.Model):
     class Meta:
         ordering = ["-created_at", "-id"]
         indexes = [
+            models.Index(fields=["-created_at", "-id"], name="purchase_order_newest"),
             models.Index(fields=["status", "-created_at", "-id"], name="purchase_order_status_newest"),
         ]
         constraints = [

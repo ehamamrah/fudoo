@@ -1,8 +1,9 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import status
+from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.pagination import CursorPagination
 from purchasing import services
 from purchasing.models import OPEN_STATUSES, PurchaseOrder
 from purchasing.serializers import (
@@ -31,12 +32,15 @@ def _validated(serializer_class, request, **context):
     return serializer.validated_data
 
 
-class PurchaseOrderListCreate(APIView):
-    def get(self, request):
+class PurchaseOrderListCreate(generics.ListAPIView):
+    serializer_class = PurchaseOrderSerializer
+    pagination_class = CursorPagination
+
+    def get_queryset(self):
         orders = _orders()
-        if request.query_params.get("status") == "open":
-            orders = orders.filter(status__in=OPEN_STATUSES)
-        return Response(PurchaseOrderSerializer(orders, many=True).data)
+        if self.request.query_params.get("status") == "open":
+            return orders.filter(status__in=OPEN_STATUSES)
+        return orders
 
     def post(self, request):
         return _created_or_replayed(

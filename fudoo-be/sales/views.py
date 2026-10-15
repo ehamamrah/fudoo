@@ -1,18 +1,16 @@
-from rest_framework import status
+from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
+from core.pagination import CursorPagination
 from sales.models import Sale
 from sales.serializers import SaleInputSerializer, SaleSerializer
 from sales.services import record_sale
 
-LATEST_LIMIT = 50
 
-
-class SaleListCreate(APIView):
-    def get(self, request):
-        sales = Sale.objects.select_related("menu_item")[:LATEST_LIMIT]
-        return Response(SaleSerializer(sales, many=True).data)
+class SaleListCreate(generics.ListAPIView):
+    queryset = Sale.objects.select_related("menu_item")
+    serializer_class = SaleSerializer
+    pagination_class = CursorPagination
 
     def post(self, request):
         serializer = SaleInputSerializer(data=request.data)

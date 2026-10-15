@@ -6,9 +6,17 @@ SIZES = [1, 6]
 
 @pytest.mark.parametrize("size", SIZES)
 @pytest.mark.parametrize(("path", "queries"), [
-    ("/api/ingredients/", 1),
-    ("/api/suppliers/", 2),
-    ("/api/menu-items/", 3),
+    ("/api/ingredients/", 2),
+    ("/api/ingredients/?search=k", 2),
+    ("/api/suppliers/", 3),
+    ("/api/suppliers/?search=k", 3),
+    ("/api/menu-items/", 4),
+    ("/api/menu-items/?search=k", 4),
+    ("/api/ingredients/options/", 1),
+    ("/api/ingredients/options/?supplier=1", 1),
+    ("/api/suppliers/options/", 1),
+    ("/api/menu-items/options/", 1),
+    ("/api/ingredients/summary/", 1),
 ])
 def test_list_query_count_is_constant(api, kitchen, django_assert_num_queries, size, path, queries):
     for n in range(size):

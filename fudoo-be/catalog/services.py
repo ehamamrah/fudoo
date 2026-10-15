@@ -1,6 +1,7 @@
 from django.db import transaction
+from django.db.models import Count
 
-from catalog.models import MenuItem, RecipeLine
+from catalog.models import OUT_OF_STOCK, Ingredient, MenuItem, RecipeLine
 
 
 @transaction.atomic
@@ -11,3 +12,11 @@ def create_menu_item(name, recipe):
         for line in recipe
     )
     return menu_item
+
+
+def stock_summary():
+    return Ingredient.objects.aggregate(
+        total=Count("id"),
+        in_stock=Count("id", filter=~OUT_OF_STOCK),
+        out_of_stock=Count("id", filter=OUT_OF_STOCK),
+    )

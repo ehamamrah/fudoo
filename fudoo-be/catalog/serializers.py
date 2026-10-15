@@ -1,3 +1,4 @@
+from django.db.models import prefetch_related_objects
 from rest_framework import serializers
 
 from catalog import services
@@ -15,7 +16,8 @@ from core.validation import (
 class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
-        fields = ["id", "name", "unit", "on_hand"]
+        fields = ["id", "name", "unit", "on_hand", "out_of_stock"]
+        read_only_fields = ["out_of_stock"]
 
     def validate_name(self, value):
         if Ingredient.objects.filter(name__iexact=value).exists():
@@ -23,12 +25,23 @@ class IngredientSerializer(serializers.ModelSerializer):
         return value
 
 
+class IngredientNameSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ingredient
+        fields = ["id", "name"]
+
+
 class SupplierSerializer(serializers.ModelSerializer):
     ingredients = PrimaryKeyListField(queryset=Ingredient.objects.all(), required=False)
+    supplies = IngredientNameSerializer(source="ingredients", many=True, read_only=True)
 
     class Meta:
         model = Supplier
-        fields = ["id", "name", "contact", "ingredients"]
+        fields = ["id", "name", "contact", "ingredients", "supplies"]
+
+    def to_representation(self, instance):
+        prefetch_related_objects([instance], "ingredients")
+        return super().to_representation(instance)
 
 
 class RecipeLineSerializer(serializers.ModelSerializer):

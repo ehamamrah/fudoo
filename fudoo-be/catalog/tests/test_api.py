@@ -8,7 +8,7 @@ pytestmark = pytest.mark.django_db
 def test_create_ingredient_starts_with_zero_stock(api):
     response = api.post("/api/ingredients/", {"name": "Beef", "unit": "g"})
     assert response.status_code == 201
-    assert response.json() == {"id": response.json()["id"], "name": "Beef", "unit": "g", "on_hand": "0.000"}
+    assert response.json() == {"id": response.json()["id"], "name": "Beef", "unit": "g", "on_hand": "0.000", "out_of_stock": True}
 
 
 def test_ingredient_on_hand_is_read_only(api):
@@ -29,7 +29,7 @@ def test_ingredient_name_is_unique_case_insensitive(api, beef):
 
 
 def test_list_ingredients_ordered_by_name(api, beef, bun):
-    names = [item["name"] for item in api.get("/api/ingredients/").json()]
+    names = [item["name"] for item in api.get("/api/ingredients/").json()["results"]]
     assert names == ["Beef", "Bun"]
 
 
@@ -38,7 +38,7 @@ def test_create_and_list_suppliers(api):
     created = api.post("/api/suppliers/", {"name": "Meat Co", "contact": "orders@meatco.test"})
     assert created.status_code == 201
     assert created.json()["contact"] == "orders@meatco.test"
-    assert [s["name"] for s in api.get("/api/suppliers/").json()] == ["Meat Co", "Veg Co"]
+    assert [s["name"] for s in api.get("/api/suppliers/").json()["results"]] == ["Meat Co", "Veg Co"]
 
 
 def test_supplier_name_is_unique(api, supplier):
@@ -59,7 +59,10 @@ def test_create_supplier_with_ingredients(api, beef, bun):
     body = {"name": "Veg Co", "contact": "", "ingredients": [beef.id, bun.id]}
     response = api.post("/api/suppliers/", body, format="json")
     assert response.status_code == 201
-    assert response.json() == {"id": response.json()["id"], "name": "Veg Co", "contact": "", "ingredients": [beef.id, bun.id]}
+    assert response.json() == {
+        "id": response.json()["id"], "name": "Veg Co", "contact": "", "ingredients": [beef.id, bun.id],
+        "supplies": [{"id": beef.id, "name": "Beef"}, {"id": bun.id, "name": "Bun"}],
+    }
 
 
 def test_create_supplier_with_unknown_ingredient_is_400(api):
@@ -70,7 +73,7 @@ def test_create_supplier_with_unknown_ingredient_is_400(api):
 
 
 def test_list_suppliers_shows_ingredient_ids(api, supplier, beef, bun):
-    assert api.get("/api/suppliers/").json()[0]["ingredients"] == [beef.id, bun.id]
+    assert api.get("/api/suppliers/").json()["results"][0]["ingredients"] == [beef.id, bun.id]
 
 
 def test_retrieve_supplier(api, supplier, beef, bun):
@@ -78,6 +81,7 @@ def test_retrieve_supplier(api, supplier, beef, bun):
     assert response.status_code == 200
     assert response.json() == {
         "id": supplier.id, "name": "Meat Co", "contact": "orders@meatco.test", "ingredients": [beef.id, bun.id],
+        "supplies": [{"id": beef.id, "name": "Beef"}, {"id": bun.id, "name": "Bun"}],
     }
 
 
@@ -144,6 +148,6 @@ def test_menu_item_name_is_unique(api, burger, beef):
 
 
 def test_list_menu_items(api, burger):
-    items = api.get("/api/menu-items/").json()
+    items = api.get("/api/menu-items/").json()["results"]
     assert [item["name"] for item in items] == ["Classic Burger"]
     assert len(items[0]["recipe"]) == 2
