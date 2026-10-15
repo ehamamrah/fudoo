@@ -1,8 +1,9 @@
 from rest_framework import serializers
 
 from catalog.models import Ingredient, Supplier
+from core.idempotency import idempotency_key
 from core.quantities import DECIMAL_PLACES, MAX_DIGITS, positive_quantity
-from core.validation import reject_duplicates
+from core.validation import MAX_LIST_ITEMS, PrimaryKeyField, reject_duplicates, resolve_references
 from purchasing import state_machine
 from purchasing.models import POLine, PurchaseOrder
 
@@ -40,29 +41,32 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
 
 
 class POLineInputSerializer(serializers.Serializer):
-    ingredient = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
+    ingredient = PrimaryKeyField()
     quantity_ordered = positive_quantity()
 
 
 class PurchaseOrderInputSerializer(serializers.Serializer):
+    request_id = idempotency_key()
     supplier = serializers.PrimaryKeyRelatedField(queryset=Supplier.objects.all())
-    lines = POLineInputSerializer(many=True, allow_empty=False)
+    lines = POLineInputSerializer(many=True, allow_empty=False, max_length=MAX_LIST_ITEMS)
 
     def validate_lines(self, lines):
-        return reject_duplicates(lines, "ingredient", "An ingredient may appear only once.")
+        reject_duplicates(lines, "ingredient", "An ingredient may appear only once.")
+        return resolve_references(lines, "ingredient", Ingredient.objects.all())
 
 
 class ActionInputSerializer(serializers.Serializer):
-    action = serializers.CharField()
+    action = serializers.CharField(max_length=16)
 
 
 class DeliveryLineInputSerializer(serializers.Serializer):
-    line = serializers.IntegerField()
+    line = PrimaryKeyField()
     quantity = positive_quantity()
 
 
 class DeliveryInputSerializer(serializers.Serializer):
-    lines = DeliveryLineInputSerializer(many=True, allow_empty=False)
+    request_id = idempotency_key()
+    lines = DeliveryLineInputSerializer(many=True, allow_empty=False, max_length=MAX_LIST_ITEMS)
 
     def validate_lines(self, lines):
         reject_duplicates(lines, "line", "A line may appear only once.")

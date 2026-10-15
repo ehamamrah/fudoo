@@ -3,6 +3,7 @@ from decimal import Decimal
 import pytest
 from django.db import IntegrityError, transaction
 
+from core.testing import new_id
 from inventory.models import StockMovement
 from purchasing.errors import OverReceipt, PONotReceivable
 from purchasing.models import Delivery, POLine, PurchaseOrder, Status
@@ -12,7 +13,8 @@ pytestmark = pytest.mark.django_db
 
 
 def receive(order, *items):
-    return receive_delivery(order.id, [{"line": line.id, "quantity": Decimal(q)} for line, q in items])
+    lines = [{"line": line.id, "quantity": Decimal(q)} for line, q in items]
+    return receive_delivery(order.id, new_id(), lines)[0]
 
 
 def reload(*objects):

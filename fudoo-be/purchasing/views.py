@@ -21,6 +21,10 @@ def _respond(order_id, code=status.HTTP_200_OK):
     return Response(PurchaseOrderSerializer(_orders().get(pk=order_id)).data, status=code)
 
 
+def _created_or_replayed(order, created):
+    return _respond(order.id, status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
 def _validated(serializer_class, request, **context):
     serializer = serializer_class(data=request.data, context=context)
     serializer.is_valid(raise_exception=True)
@@ -35,8 +39,9 @@ class PurchaseOrderListCreate(APIView):
         return Response(PurchaseOrderSerializer(orders, many=True).data)
 
     def post(self, request):
-        order = services.create_purchase_order(**_validated(PurchaseOrderInputSerializer, request))
-        return _respond(order.id, status.HTTP_201_CREATED)
+        return _created_or_replayed(
+            *services.create_purchase_order(**_validated(PurchaseOrderInputSerializer, request))
+        )
 
 
 class PurchaseOrderDetail(APIView):
@@ -55,5 +60,4 @@ class PurchaseOrderDeliveries(APIView):
     def post(self, request, pk):
         order = get_object_or_404(PurchaseOrder, pk=pk)
         data = _validated(DeliveryInputSerializer, request, purchase_order=order)
-        services.receive_delivery(pk, data["lines"])
-        return _respond(pk, status.HTTP_201_CREATED)
+        return _created_or_replayed(*services.receive_delivery(pk, data["request_id"], data["lines"]))

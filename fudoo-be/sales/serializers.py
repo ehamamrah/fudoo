@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from catalog.models import MenuItem
+from core.idempotency import idempotency_key
 from sales.models import Sale
 
 MAX_SALE_QUANTITY = 10000
@@ -15,7 +16,7 @@ class SaleSerializer(serializers.ModelSerializer):
 
 
 class SaleInputSerializer(serializers.Serializer):
-    external_id = serializers.CharField(max_length=100)
+    external_id = idempotency_key()
     menu_item = serializers.PrimaryKeyRelatedField(
         queryset=MenuItem.objects.prefetch_related("recipe")
     )

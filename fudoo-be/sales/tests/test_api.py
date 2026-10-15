@@ -1,5 +1,6 @@
 import pytest
 
+from conftest import build_burger
 from sales.models import Sale
 
 pytestmark = pytest.mark.django_db
@@ -28,6 +29,17 @@ def test_duplicate_sale_returns_200_with_same_sale(api, burger, beef, bun, stock
     assert again.json() == first.json()
 
 
+@pytest.mark.parametrize("quantity", [2, 1])
+def test_reused_external_id_with_other_payload_returns_409(api, burger, beef, bun, stock_up, quantity):
+    stock_up((beef, "1000"), (bun, "10"))
+    sell(api, "pos-1", burger, 1)
+    other = build_burger(beef, bun, "Double") if quantity == 1 else burger
+    response = sell(api, "pos-1", other, quantity)
+    assert response.status_code == 409
+    assert response.json() == {"code": "idempotency_conflict", "detail": response.json()["detail"]}
+    assert Sale.objects.count() == 1
+
+
 def test_insufficient_stock_returns_409_with_shortages(api, burger, beef, bun, stock_up):
     stock_up((beef, "120"), (bun, "5"))
     response = sell(api, "pos-1", burger, 2)
@@ -45,6 +57,9 @@ def test_insufficient_stock_returns_409_with_shortages(api, burger, beef, bun, s
     ("quantity", {"external_id": "x", "quantity": 10001}),
     ("quantity", {"external_id": "x", "quantity": 3000000000}),
     ("external_id", {"quantity": 1}),
+    ("external_id", {"external_id": "", "quantity": 1}),
+    ("external_id", {"external_id": "x" * 65, "quantity": 1}),
+    ("menu_item", {"external_id": "x", "quantity": 1, "menu_item": 10**30}),
     ("menu_item", {"external_id": "x", "quantity": 1, "menu_item": 999999}),
 ])
 def test_invalid_sale_rejected(api, burger, field, body):

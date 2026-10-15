@@ -7,7 +7,7 @@ from catalog.models import Ingredient
 from inventory import stock
 from inventory.errors import InsufficientStock
 from inventory.models import StockMovement
-from inventory.testing import ledger_total
+from inventory.tests.ledger import ledger_total
 
 pytestmark = pytest.mark.django_db
 DELIVERY = StockMovement.Reason.DELIVERY

@@ -2,6 +2,8 @@ from decimal import Decimal
 
 import pytest
 
+from core.testing import new_id
+
 from purchasing.models import Status
 from purchasing.services import create_purchase_order, perform_action, receive_delivery
 
@@ -12,7 +14,7 @@ def order(supplier, beef, bun):
         {"ingredient": beef, "quantity_ordered": Decimal("5000")},
         {"ingredient": bun, "quantity_ordered": Decimal("100")},
     ]
-    return create_purchase_order(supplier, lines)
+    return create_purchase_order("po-fixture", supplier, lines)[0]
 
 
 PATHS = {
@@ -26,7 +28,7 @@ PATHS = {
 
 def _step(order, step):
     if step == "deliver":
-        receive_delivery(order.id, [{"line": order.lines.first().id, "quantity": Decimal("1")}])
+        receive_delivery(order.id, new_id(), [{"line": order.lines.first().id, "quantity": Decimal("1")}])
     else:
         perform_action(order.id, step)
 

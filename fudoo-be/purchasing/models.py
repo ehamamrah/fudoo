@@ -1,6 +1,7 @@
 from django.db import models
 
 from catalog.models import Ingredient, Supplier
+from core.idempotency import ID_MAX_LENGTH
 from core.quantities import QuantityField
 
 
@@ -16,12 +17,16 @@ OPEN_STATUSES = (Status.SENT, Status.RECEIVED)
 
 
 class PurchaseOrder(models.Model):
+    request_id = models.CharField(max_length=ID_MAX_LENGTH, unique=True)
     supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT, related_name="+")
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["status", "-created_at", "-id"], name="purchase_order_status_newest"),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(status__in=Status.values), name="purchase_order_status_valid"
@@ -58,6 +63,7 @@ class POLine(models.Model):
 
 
 class Delivery(models.Model):
+    request_id = models.CharField(max_length=ID_MAX_LENGTH, unique=True)
     purchase_order = models.ForeignKey(
         PurchaseOrder, on_delete=models.PROTECT, related_name="deliveries"
     )

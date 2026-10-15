@@ -3,6 +3,7 @@ from decimal import Decimal
 import pytest
 
 from catalog.models import Ingredient
+from core.testing import new_id
 from purchasing.errors import IngredientNotSupplied
 from purchasing.models import POLine, PurchaseOrder
 from purchasing.services import create_purchase_order
@@ -15,14 +16,15 @@ def line(ingredient):
 
 
 def test_creates_order_for_supplied_ingredients(supplier, beef, bun):
-    order = create_purchase_order(supplier, [line(beef), line(bun)])
+    order, created = create_purchase_order(new_id(), supplier, [line(beef), line(bun)])
+    assert created
     assert order.lines.count() == 2
 
 
 def test_rejects_unsupplied_ingredients_and_creates_nothing(supplier, beef, lettuce):
     tomato = Ingredient.objects.create(name="Tomato", unit="g")
     with pytest.raises(IngredientNotSupplied) as error:
-        create_purchase_order(supplier, [line(tomato), line(beef), line(lettuce)])
+        create_purchase_order(new_id(), supplier, [line(tomato), line(beef), line(lettuce)])
     assert error.value.code == "ingredient_not_supplied"
     assert error.value.detail == "Meat Co does not supply: Lettuce, Tomato."
     assert not PurchaseOrder.objects.exists()
@@ -30,6 +32,6 @@ def test_rejects_unsupplied_ingredients_and_creates_nothing(supplier, beef, lett
 
 
 def test_existing_order_survives_mapping_removal(supplier, beef):
-    order = create_purchase_order(supplier, [line(beef)])
+    order, _ = create_purchase_order(new_id(), supplier, [line(beef)])
     supplier.ingredients.remove(beef)
     assert PurchaseOrder.objects.get(pk=order.pk).lines.count() == 1

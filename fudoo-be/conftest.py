@@ -1,4 +1,5 @@
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from rest_framework.test import APIClient
@@ -64,3 +65,16 @@ def stock_up(db):
         quantities = {ingredient.id: Decimal(quantity) for ingredient, quantity in pairs}
         stock.increase(quantities, StockMovement.Reason.DELIVERY, "test")
     return add
+
+
+@pytest.fixture
+def kitchen(stock_up):
+    def build(size, tag="k"):
+        ingredients = [Ingredient.objects.create(name=f"{tag} {n}", unit="g") for n in range(size)]
+        supplier = Supplier.objects.create(name=f"{tag} supplier")
+        supplier.ingredients.add(*ingredients)
+        stock_up(*((ingredient, "1000") for ingredient in ingredients))
+        recipe = [{"ingredient": ingredient, "quantity": Decimal("1")} for ingredient in ingredients]
+        menu_item = create_menu_item(f"{tag} burger", recipe)
+        return SimpleNamespace(ingredients=ingredients, supplier=supplier, menu_item=menu_item)
+    return build

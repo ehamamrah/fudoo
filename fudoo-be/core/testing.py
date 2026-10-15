@@ -1,4 +1,5 @@
 import threading
+import uuid
 
 from django.db import connection
 
@@ -19,6 +20,10 @@ def race(*calls):
     for thread in threads:
         thread.join()
     return outcomes
+
+
+def new_id():
+    return uuid.uuid4().hex
 
 
 def outcome_kinds(outcomes):

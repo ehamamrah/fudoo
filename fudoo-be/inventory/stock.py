@@ -29,10 +29,10 @@ def _apply(ingredients, quantities, sign, reason, reference):
     for ingredient in ingredients:
         delta = sign * quantities[ingredient.id]
         ingredient.on_hand += delta
-        ingredient.save(update_fields=["on_hand"])
         movements.append(StockMovement(
             ingredient=ingredient, quantity=delta, reason=reason, reference=reference
         ))
+    Ingredient.objects.bulk_update(ingredients, ["on_hand"])
     StockMovement.objects.bulk_create(movements)
 
 

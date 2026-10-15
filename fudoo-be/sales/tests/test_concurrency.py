@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 
 from core.testing import RACE_ROUNDS, outcome_kinds, race
-from inventory.testing import assert_ledger_matches
+from inventory.tests.ledger import assert_ledger_matches
 from sales.models import Sale
 from sales.services import record_sale
 
@@ -35,3 +35,17 @@ def test_same_external_id_racing_deducts_once(fresh_burger, stock_up):
         assert len({sale.id for sale, _ in outcomes}) == 1
         assert_ledger_matches(beef)
         assert beef.on_hand == Decimal("850")
+
+
+def test_same_external_id_with_conflicting_payloads_racing_deducts_once(fresh_burger, stock_up):
+    for round_ in range(RACE_ROUNDS):
+        burger, beef, bun = fresh_burger(round_)
+        stock_up((beef, "1000"), (bun, "10"))
+        outcomes = race(
+            lambda: record_sale(f"clash-{round_}", burger, 1),
+            lambda: record_sale(f"clash-{round_}", burger, 2),
+        )
+        assert outcome_kinds(outcomes) == ["IdempotencyConflict", "tuple"]
+        assert Sale.objects.filter(external_id=f"clash-{round_}").count() == 1
+        assert_ledger_matches(beef, bun)
+        assert beef.on_hand in (Decimal("850"), Decimal("700"))

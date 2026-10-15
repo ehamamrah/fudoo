@@ -2,12 +2,34 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-only-insecure-key")
 DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
-ALLOWED_HOSTS = ["*"]
+HSTS_ONE_YEAR = 31_536_000
+
+
+def _secret_key():
+    key = os.environ.get("DJANGO_SECRET_KEY")
+    if key:
+        return key
+    if DEBUG:
+        return "dev-only-insecure-key"
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY is required when DJANGO_DEBUG is off.")
+
+
+def _allowed_hosts():
+    hosts = [host.strip() for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if host.strip()]
+    if DEBUG:
+        return hosts or ["*"]
+    if not hosts or "*" in hosts:
+        raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS must list explicit hosts when DJANGO_DEBUG is off.")
+    return hosts
+
+
+SECRET_KEY = _secret_key()
+ALLOWED_HOSTS = _allowed_hosts()
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
@@ -21,7 +43,10 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -33,11 +58,20 @@ DATABASES = {
     ),
 }
 
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = False
 USE_TZ = True
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_HSTS_SECONDS = 0 if DEBUG else HSTS_ONE_YEAR
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],

@@ -2,6 +2,7 @@ from decimal import Decimal
 
 import pytest
 
+from core.testing import new_id
 from purchasing.models import PurchaseOrder, Status
 from purchasing.services import create_purchase_order
 
@@ -13,7 +14,7 @@ def url(order, suffix=""):
 
 
 def test_create_purchase_order_in_draft(api, supplier, beef):
-    body = {"supplier": supplier.id, "lines": [{"ingredient": beef.id, "quantity_ordered": "5000"}]}
+    body = {"request_id": "po-1", "supplier": supplier.id, "lines": [{"ingredient": beef.id, "quantity_ordered": "5000"}]}
     response = api.post("/api/purchase-orders/", body)
     assert response.status_code == 201
     data = response.json()
@@ -36,7 +37,7 @@ def test_create_purchase_order_in_draft(api, supplier, beef):
 def test_invalid_purchase_order_lines_rejected(api, supplier, beef, lines):
     for line in lines:
         line["ingredient"] = beef.id
-    response = api.post("/api/purchase-orders/", {"supplier": supplier.id, "lines": lines})
+    response = api.post("/api/purchase-orders/", {"request_id": "po-1", "supplier": supplier.id, "lines": lines})
     assert response.status_code == 400
     assert "lines" in response.json()
     assert not PurchaseOrder.objects.exists()
@@ -44,20 +45,20 @@ def test_invalid_purchase_order_lines_rejected(api, supplier, beef, lines):
 
 def test_unsupplied_ingredient_returns_409_and_creates_nothing(api, supplier, beef, lettuce):
     lines = [{"ingredient": beef.id, "quantity_ordered": "1"}, {"ingredient": lettuce.id, "quantity_ordered": "1"}]
-    response = api.post("/api/purchase-orders/", {"supplier": supplier.id, "lines": lines})
+    response = api.post("/api/purchase-orders/", {"request_id": "po-1", "supplier": supplier.id, "lines": lines})
     assert response.status_code == 409
     assert response.json() == {"code": "ingredient_not_supplied", "detail": "Meat Co does not supply: Lettuce."}
     assert not PurchaseOrder.objects.exists()
 
 
 def test_list_newest_first(api, order, supplier):
-    newer = PurchaseOrder.objects.create(supplier=supplier)
+    newer = PurchaseOrder.objects.create(request_id=new_id(), supplier=supplier)
     assert [o["id"] for o in api.get("/api/purchase-orders/").json()] == [newer.id, order.id]
 
 
 def test_open_filter_returns_only_sent_and_received(api, order_in, supplier, beef):
     lines = [{"ingredient": beef, "quantity_ordered": Decimal("10")}]
-    orders = {status: order_in(create_purchase_order(supplier, lines), status) for status in Status}
+    orders = {status: order_in(create_purchase_order(new_id(), supplier, lines)[0], status) for status in Status}
     listed = {o["id"]: o["status"] for o in api.get("/api/purchase-orders/?status=open").json()}
     assert listed == {orders[Status.SENT].id: "sent", orders[Status.RECEIVED].id: "received"}
 
@@ -90,7 +91,7 @@ def test_action_on_unknown_order_is_404(api, db):
 
 
 def test_receive_partial_delivery(api, sent_order, lines):
-    body = {"lines": [{"line": lines["Beef"].id, "quantity": "3000"}]}
+    body = {"request_id": "d-1", "lines": [{"line": lines["Beef"].id, "quantity": "3000"}]}
     response = api.post(url(sent_order, "deliveries/"), body)
     assert response.status_code == 201
     data = response.json()
@@ -100,13 +101,13 @@ def test_receive_partial_delivery(api, sent_order, lines):
 
 
 def test_over_receipt_returns_409(api, sent_order, lines):
-    body = {"lines": [{"line": lines["Bun"].id, "quantity": "101"}]}
+    body = {"request_id": "d-1", "lines": [{"line": lines["Bun"].id, "quantity": "101"}]}
     response = api.post(url(sent_order, "deliveries/"), body)
     assert (response.status_code, response.json()["code"]) == (409, "over_receipt")
 
 
 def test_delivery_on_draft_returns_409(api, order, lines):
-    body = {"lines": [{"line": lines["Bun"].id, "quantity": "1"}]}
+    body = {"request_id": "d-1", "lines": [{"line": lines["Bun"].id, "quantity": "1"}]}
     response = api.post(url(order, "deliveries/"), body)
     assert (response.status_code, response.json()["code"]) == (409, "po_not_receivable")
 
@@ -118,14 +119,67 @@ def test_delivery_on_draft_returns_409(api, order, lines):
     lambda own, foreign: [{"line": own, "quantity": "1"}, {"line": own, "quantity": "1"}],
 ])
 def test_invalid_delivery_lines_rejected(api, sent_order, lines, supplier, beef, make_lines):
-    other = PurchaseOrder.objects.create(supplier=supplier)
+    other = PurchaseOrder.objects.create(request_id=new_id(), supplier=supplier)
     foreign = other.lines.create(ingredient=beef, quantity_ordered=1).id
-    body = {"lines": make_lines(lines["Beef"].id, foreign)}
+    body = {"request_id": "d-1", "lines": make_lines(lines["Beef"].id, foreign)}
     response = api.post(url(sent_order, "deliveries/"), body)
     assert response.status_code == 400
     assert "lines" in response.json()
 
 
 def test_delivery_on_unknown_order_is_404(api, db):
-    body = {"lines": [{"line": 1, "quantity": "1"}]}
+    body = {"request_id": "d-1", "lines": [{"line": 1, "quantity": "1"}]}
     assert api.post("/api/purchase-orders/999999/deliveries/", body).status_code == 404
+
+
+def po_body(supplier, ingredient, quantity="5000", request_id="po-1"):
+    return {"request_id": request_id, "supplier": supplier.id,
+            "lines": [{"ingredient": ingredient.id, "quantity_ordered": quantity}]}
+
+
+def test_repeated_purchase_order_request_returns_200_with_same_order(api, supplier, beef):
+    first = api.post("/api/purchase-orders/", po_body(supplier, beef))
+    again = api.post("/api/purchase-orders/", po_body(supplier, beef))
+    assert (first.status_code, again.status_code) == (201, 200)
+    assert again.json() == first.json()
+    assert PurchaseOrder.objects.count() == 1
+
+
+def test_reused_purchase_order_request_with_other_payload_returns_409(api, supplier, beef):
+    api.post("/api/purchase-orders/", po_body(supplier, beef))
+    response = api.post("/api/purchase-orders/", po_body(supplier, beef, quantity="1"))
+    assert response.status_code == 409
+    assert response.json() == {"code": "idempotency_conflict", "detail": response.json()["detail"]}
+
+
+@pytest.mark.parametrize("request_id", [None, "", "x" * 65])
+def test_purchase_order_request_id_is_validated(api, supplier, beef, request_id):
+    body = po_body(supplier, beef, request_id=request_id)
+    if request_id is None:
+        del body["request_id"]
+    response = api.post("/api/purchase-orders/", body)
+    assert response.status_code == 400
+    assert "request_id" in response.json()
+
+
+def test_repeated_delivery_returns_200_and_applies_once(api, sent_order, lines, beef):
+    body = {"request_id": "d-1", "lines": [{"line": lines["Beef"].id, "quantity": "3000"}]}
+    first = api.post(url(sent_order, "deliveries/"), body)
+    again = api.post(url(sent_order, "deliveries/"), body)
+    assert (first.status_code, again.status_code) == (201, 200)
+    assert again.json() == first.json()
+    beef.refresh_from_db()
+    assert beef.on_hand == Decimal("3000")
+
+
+def test_reused_delivery_request_with_other_lines_returns_409(api, sent_order, lines):
+    api.post(url(sent_order, "deliveries/"), {"request_id": "d-1", "lines": [{"line": lines["Beef"].id, "quantity": "1"}]})
+    body = {"request_id": "d-1", "lines": [{"line": lines["Beef"].id, "quantity": "2"}]}
+    response = api.post(url(sent_order, "deliveries/"), body)
+    assert (response.status_code, response.json()["code"]) == (409, "idempotency_conflict")
+
+
+def test_delivery_requires_request_id(api, sent_order, lines):
+    response = api.post(url(sent_order, "deliveries/"), {"lines": [{"line": lines["Beef"].id, "quantity": "1"}]})
+    assert response.status_code == 400
+    assert "request_id" in response.json()
