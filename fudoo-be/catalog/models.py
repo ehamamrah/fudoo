@@ -1,0 +1,63 @@
+from django.db import models
+from django.db.models.functions import Lower
+
+from core.quantities import QuantityField
+
+
+class Unit(models.TextChoices):
+    GRAM = "g"
+    MILLILITRE = "ml"
+    PIECE = "pcs"
+
+
+class Ingredient(models.Model):
+    name = models.CharField(max_length=100)
+    unit = models.CharField(max_length=3, choices=Unit.choices)
+    on_hand = QuantityField(default=0, editable=False)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(Lower("name"), name="ingredient_name_ci_unique"),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class Supplier(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    contact = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class MenuItem(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class RecipeLine(models.Model):
+    menu_item = models.ForeignKey(MenuItem, on_delete=models.CASCADE, related_name="recipe")
+    ingredient = models.ForeignKey(Ingredient, on_delete=models.PROTECT, related_name="+")
+    quantity = QuantityField()
+
+    class Meta:
+        ordering = ["id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["menu_item", "ingredient"], name="recipe_line_ingredient_unique"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(quantity__gt=0), name="recipe_line_quantity_positive"
+            ),
+        ]
