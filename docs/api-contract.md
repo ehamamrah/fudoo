@@ -11,8 +11,17 @@ Quantities are decimal strings with up to 3 decimal places, e.g. `"150.000"`. Re
 | 404 | Unknown id | `{"detail": "Not found."}` |
 | 409 | Valid input that breaks a business rule | `{"code": "<error_code>", "detail": "<human message>"}` |
 
-409 codes: `invalid_transition`, `po_not_receivable`, `over_receipt`, `insufficient_stock`, `ingredient_not_supplied`.
+409 codes: `invalid_transition`, `po_not_receivable`, `over_receipt`, `insufficient_stock`, `ingredient_not_supplied`, `idempotency_conflict`.
 `insufficient_stock` additionally carries `"shortages": [{"ingredient": 1, "name": "Beef", "required": "300.000", "available": "120.000"}]`.
+
+Limits: at most 100 items in any list (PO lines, delivery lines, recipe lines, supplier `ingredients`); unknown ids inside a list → `400 {"lines": ["Unknown ids: [n]."]}`.
+
+## Idempotency (no duplicates on retry)
+
+Every request that creates something carries a client-generated id: `request_id` for purchase orders and deliveries, `external_id` for sales. It is a string of 1–64 characters (the UI sends a UUID). The client keeps the same id when it retries an attempt and makes a new one only after a success.
+
+- Same id + same payload → the original result with `200`. Nothing is created or applied twice, including when the two requests arrive concurrently.
+- Same id + a different payload → `409 idempotency_conflict`. Nothing changes.
 
 ## Ingredients
 
@@ -61,7 +70,7 @@ Quantities are decimal strings with up to 3 decimal places, e.g. `"150.000"`. Re
 `GET /api/purchase-orders/` → `200 [PurchaseOrder]` newest first
 `GET /api/purchase-orders/?status=open` → only `sent` and `received`
 `GET /api/purchase-orders/{id}/` → `200 PurchaseOrder`
-`POST /api/purchase-orders/` body `{"supplier": 1, "lines": [{"ingredient": 1, "quantity_ordered": "5000"}]}` → `201 PurchaseOrder` in `draft`
+`POST /api/purchase-orders/` body `{"request_id": "b3c1…", "supplier": 1, "lines": [{"ingredient": 1, "quantity_ordered": "5000"}]}` → `201 PurchaseOrder` in `draft` (or `200` for a repeated `request_id`, see Idempotency)
 
 ```json
 {
@@ -98,11 +107,12 @@ Quantities are decimal strings with up to 3 decimal places, e.g. `"150.000"`. Re
 
 ### Receive a delivery
 
-`POST /api/purchase-orders/{id}/deliveries/` → `201 PurchaseOrder`
+`POST /api/purchase-orders/{id}/deliveries/` → `201 PurchaseOrder` (or `200` for a repeated `request_id`)
 
 ```json
-{"lines": [{"line": 11, "quantity": "2000"}]}
+{"request_id": "9f2a…", "lines": [{"line": 11, "quantity": "2000"}]}
 ```
+- `request_id` required. A repeat for the same order and lines returns the order as it is now and applies nothing; reusing it for another order or other lines → `409 idempotency_conflict`.
 - PO must be `sent` or `received`, else `409 po_not_receivable`.
 - Each `line` must belong to this PO (else 400), quantity > 0, no duplicate lines.
 - Quantity above outstanding → `409 over_receipt`; nothing is applied.
@@ -119,7 +129,7 @@ Response:
 ```json
 {"id": 3, "external_id": "pos-2026-10-15-0001", "menu_item": 1, "menu_item_name": "Classic Burger", "quantity": 2, "sold_at": "2026-10-15T12:00:00Z"}
 ```
-- `quantity` positive integer. `external_id` required, unique: a retry is idempotent and deducts nothing.
+- `quantity` positive integer (max 10,000). `external_id` required, unique: a retry is idempotent and deducts nothing. The same `external_id` with a different `menu_item` or `quantity` → `409 idempotency_conflict`.
 - If any ingredient lacks stock for `recipe quantity × quantity` → `409 insufficient_stock`; nothing is deducted.
 
 `GET /api/sales/` → `200 [Sale]` newest first, latest 50.
@@ -127,3 +137,7 @@ Response:
 ## Stock
 
 Current stock is `on_hand` on `GET /api/ingredients/`. The UI polls it every 5 seconds and after every mutation.
+
+## Health
+
+`GET /api/health/` → `200 {"status": "ok", "database": "ok"}` when the API can query the database, otherwise `503 {"status": "error", "database": "unavailable"}`. Used by the Docker healthchecks.

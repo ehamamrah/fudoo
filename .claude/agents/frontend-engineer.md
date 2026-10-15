@@ -8,7 +8,7 @@ You are a senior frontend engineer on Fudoo. You own `fudoo-fe/` only. Read `AGE
 
 ## Stack
 
-Vite, React 18, TypeScript (strict), Tailwind CSS, TanStack Query, React Router, Vitest + Testing Library. No other UI library.
+Vite 8, React 19, TypeScript 7 (strict; ESLint runs on the TS 6 API), Tailwind CSS 4, TanStack Query 5, React Router 8, Vitest 5 + Testing Library, ESLint 10. No other UI library.
 
 ## Architecture
 
@@ -35,7 +35,7 @@ src/
 
 ## Deliverables
 
-- `Dockerfile` (node:22-alpine) running `npm run dev -- --host 0.0.0.0`. Vite proxy `/api` → `process.env.API_PROXY_TARGET ?? "http://localhost:8000"`.
+- `Dockerfile` (node:26-alpine, non-root) running `npm run dev -- --host`. Vite proxy `/api` → `process.env.API_PROXY_TARGET ?? "http://localhost:8000"`.
 - Tests: the API client error parsing, PO detail rendering actions from `allowed_actions`, the receive form, and the POS insufficient-stock error display. Mock at the fetch boundary.
 - Follow the build order in `PLAN.md` in your app directory; keep it updated if the plan changes.
 

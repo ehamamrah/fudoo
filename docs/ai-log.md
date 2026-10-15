@@ -123,3 +123,27 @@ I overruled the recommendation: ordering beef from the bakery is a real mistake 
 The contract was updated first. The backend and frontend agents then built in parallel. This time the agents didn't touch git; the orchestrator reviewed and committed each side, which avoided the shared-tree clashes from session 2.
 
 **Agents' notes worth keeping:** the supplier's `ingredients` come back ordered by ingredient name, so the UI treats them as a set. Unticking everything leaves a supplier that can't be used on any new PO, which is allowed.
+
+## Session 5 — Upgrade, hardening, duplicates, performance
+
+### Prompt 9 — design
+
+> Enhance the layout to a modern one.
+
+Done by the orchestrator alone: everything visual already lived in shared components, so pages didn't change. It checked the result in headless Chrome at desktop and true phone width. The first phone screenshot overflowed; the cause was a flex child without `min-w-0`, plus headless Chrome's minimum window width hiding the real layout (checked again inside a 390px iframe).
+
+### Prompt 10 — latest stack, security, N+1, duplicates, performance
+
+> Why Python 3.13 when 3.15 exists, why not Postgres 17? Upgrade to the latest. Scan BE and FE for vulnerabilities and health issues, no N+1, avoid duplicate purchase orders, and improve DB and FE performance.
+
+The orchestrator checked the registries before planning. Postgres 18 is the latest stable, not 17; 19 is only in beta. Python 3.15.0 is about two weeks old, but every dependency installs on it. It then changed the contract first (idempotency for POs and deliveries, `idempotency_conflict`, `/api/health/`), plus Compose and the Makefile. The two agents worked in parallel without touching git, and the orchestrator verified and committed.
+
+**Where the agents pushed back or found something real:**
+
+- TypeScript 7 can't sit alongside typescript-eslint (which needs TS < 6.1). The agent kept TS 7 for the build and installed the TS 6 API for ESLint, rather than using `--force`.
+- Vite with `--host 0.0.0.0` listens on IPv4 only, so a `localhost` healthcheck inside the container would never pass.
+- The delivery duplicate check has to run after taking the PO lock. Otherwise a retry that waited for the first attempt fails with `over_receipt` instead of returning the original.
+- Read endpoints were already N+1-free. The write paths weren't: their query count grew with the number of lines. Fixed with bulk operations, and query-count tests now pin both.
+- `check --deploy` had failed all along (no SecurityMiddleware, insecure defaults). Settings now fail fast without a secret key or an explicit host list when debug is off.
+
+**Verification:** each race test was checked by removing its guard (the `IntegrityError` fallback, the lock order, the unique constraint) and watching the test fail. Then a full-stack end-to-end run went through the Vite proxy: PO created once, delivery applied once, a changed payload got 409.

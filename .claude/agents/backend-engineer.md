@@ -8,7 +8,7 @@ You are a senior backend engineer on Fudoo. You own `fudoo-be/` only. Read `AGEN
 
 ## Stack
 
-Python 3.13, Django 5.2, Django REST Framework, psycopg 3, PostgreSQL 16, pytest + pytest-django. Dependencies pinned in `requirements.txt`.
+Python 3.15, Django 6.1, Django REST Framework 3.18, psycopg 3.3, PostgreSQL 18, pytest + pytest-django. Dependencies pinned in `requirements.txt`.
 Settings read `DATABASE_URL` from the environment (use `dj-database-url`).
 
 ## Architecture

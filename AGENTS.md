@@ -38,7 +38,7 @@ Delivery-driven transitions: `sent→received`, `sent→closed`, `received→clo
 
 ## Runtime
 
-- `docker compose up` starts `db` (postgres:16, port 5432), `be` (Django, port 8000), `fe` (Vite, port 5173).
+- `docker compose up` starts `db` (postgres:18, port 5432), `be` (Django, port 8000), `fe` (Vite, port 5173).
 - The frontend calls relative `/api/...`. Vite proxies `/api` to `http://be:8000`, so there is no CORS setup.
 - Backend tests: `make test-be`. Frontend tests: `make test-fe`.
 

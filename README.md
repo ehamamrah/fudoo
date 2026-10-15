@@ -2,9 +2,9 @@
 
 Inventory and purchasing service for a single-branch burger restaurant. It tracks ingredients, suppliers, recipes, purchase orders, partial deliveries and POS sales, so the owner always knows what is in the storeroom and which orders are still open.
 
-- **Backend:** Python 3.13, Django 5.2, Django REST Framework, PostgreSQL 16 (`fudoo-be/`)
-- **Frontend:** React 18, TypeScript, Vite, Tailwind, TanStack Query (`fudoo-fe/`)
-- **Runtime:** Docker Compose
+- **Backend:** Python 3.15, Django 6.1, Django REST Framework 3.18, psycopg 3.3, PostgreSQL 18 (`fudoo-be/`)
+- **Frontend:** React 19, TypeScript 7, Vite 8, Tailwind 4, TanStack Query 5, React Router 8 (`fudoo-fe/`)
+- **Runtime:** Docker Compose (Node 26, non-root containers, healthchecks on every service)
 
 ## Run it
 
@@ -29,9 +29,12 @@ curl -X POST localhost:8000/api/sales/ -H 'Content-Type: application/json' \
 ```bash
 make test-be   # pytest against real Postgres (needed for row locks and DB constraints)
 make test-fe   # Vitest + Testing Library
+make audit     # pip-audit, bandit, Django deploy check, npm audit, ESLint
 ```
 
-The backend tests cover what has to be right: every legal and illegal PO transition, ordering an ingredient the supplier doesn't supply, partial then full receiving, over-receipt, delivery against an order that can't receive, sale deduction, insufficient stock, duplicate POS events, `on_hand` equal to the sum of the ledger, and two concurrency tests using threads (two sales racing for the last stock; the same POS event sent twice at once).
+Upgrading from a checkout that ran Postgres 16: run `make reset` once. Postgres 18 uses a new data directory and can't read the old volume.
+
+The backend tests cover what has to be right: every legal and illegal PO transition, ordering an ingredient the supplier doesn't supply, partial then full receiving, over-receipt, delivery against an order that can't receive, sale deduction, insufficient stock, duplicate POS events, `on_hand` equal to the sum of the ledger, threaded race tests (sales for the last stock, concurrent deliveries, cancel against delivery, the same PO, delivery or POS event sent twice at once), a constant query count on every endpoint (no N+1), and hostile input (malformed JSON, huge numbers, oversized lists) never producing a 500.
 
 ## Architecture
 
@@ -85,20 +88,20 @@ The transitions are a declarative table in `purchasing/state_machine.py`; there 
 | Supplier will never send the rest | Manual **short-close** `received → closed` | Otherwise the order stays open forever. |
 | Cancelling | Allowed from `draft` and `sent` only | Once goods have arrived they are in stock; the order is closed instead. |
 | Over-delivery | **Rejected** (409 `over_receipt`); the whole delivery is rejected | Keeps `received ≤ ordered`. Extra goods mean amending the order. |
-| POS retries | `external_id` is required and unique; a repeat returns the original sale (200) and deducts nothing | Networks retry. Without this, one sale could be deducted twice. |
+| Retries and double submits | Every create carries a client-generated id (`external_id` for sales, `request_id` for POs and deliveries). A repeat returns the original (200) and changes nothing; the same id with a different payload is 409 `idempotency_conflict` | Networks retry and people double-click. Without this, a PO or delivery could be booked twice. One helper (`core/idempotency.py`) backed by a unique constraint handles all three, including concurrent duplicates. |
 | Which supplier sells what | Each supplier lists the ingredients it supplies. A PO line for anything else is rejected (409 `ingredient_not_supplied`), and the PO form only offers the chosen supplier's items | Stops ordering beef from the bakery. Checked only when the PO is created, so changing a supplier's list never breaks open orders. `SupplierItem` is a bare link for now; price and pack size go on it later. |
 | Editing after creation | No editing or deleting of ingredients, recipes or PO lines (a supplier's list of items is the one exception); a wrong draft PO is cancelled and recreated | The brief asks for create and list. Editing recipes would also raise history questions. |
 | Units | One unit per ingredient, no conversions | Out of scope; the recipe uses the same unit as the stock. |
+| Toolchain | Latest stable everywhere. TypeScript 7 type-checks the build; ESLint runs on the TS 6 API installed alongside, because typescript-eslint doesn't support TS 7 yet | Python 3.15 is only weeks old; all tests and audits pass on it. |
 | Up-to-date stock | Stock and open POs refresh every 5 s and after every change, with an "Updated Xs ago" indicator | The brief's "without having to guess". Polling is simpler than websockets and good enough for one branch. |
 | Low stock | Only "Out of stock" is shown | A real threshold needs a reorder level per ingredient; deferred. |
 | Unknown ids in a request body | 400 (validation); unknown ids in the URL are 404 | DRF's convention. |
 
 ## Known limitations
 
-- **Deliveries are not idempotent.** If a delivery request times out after the server committed it and the manager retries, the quantity is booked twice (the over-receipt guard only caps the total at what was ordered). The form disables itself while submitting and the page refetches, which lowers the risk. The real fix is a client-generated delivery id, handled like the POS `external_id`.
-- **A reused `external_id` with a different payload** returns the original sale (200) and ignores the new payload. A stricter API would return 409 when the payloads differ.
-- **Development setup only:** `runserver`, `DEBUG`, `ALLOWED_HOSTS=*` and a default secret key. There is no authentication, as the brief allows.
-- Quantities are capped by `Decimal(12, 3)`; sale quantity is capped at 10,000 per event.
+- **Development server in Compose:** `runserver` and Vite dev with `DJANGO_DEBUG=1`. With debug off, settings refuse to start without `DJANGO_SECRET_KEY` and explicit `DJANGO_ALLOWED_HOSTS`, and turn on HSTS, SSL redirect and secure cookies (`make audit` runs Django's deploy check this way). A real deployment still needs gunicorn, a built frontend and a TLS proxy. There is no authentication, as the brief allows.
+- Quantities are capped by `Decimal(12, 3)`; a sale is capped at 10,000 items and any list at 100 items.
+- Lists aren't paginated (sales return the latest 50).
 
 ## How I used AI
 

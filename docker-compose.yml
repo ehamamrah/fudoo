@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_DB: fudoo
       POSTGRES_USER: fudoo
@@ -8,7 +8,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata18:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U fudoo -d fudoo"]
       interval: 2s
@@ -27,18 +27,28 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/', timeout=3)"]
+      interval: 5s
+      retries: 20
 
   fe:
     build: ./fudoo-fe
     environment:
       API_PROXY_TARGET: http://be:8000
+      VITE_USE_POLLING: "1"
     ports:
       - "5173:5173"
     volumes:
       - ./fudoo-fe:/app
       - /app/node_modules
     depends_on:
-      - be
+      be:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:5173/"]
+      interval: 5s
+      retries: 20
 
 volumes:
-  pgdata:
+  pgdata18:
