@@ -8,7 +8,7 @@ From a one-branch prototype to a product for many restaurants. Squad: 3 engineer
 |---|---|
 | **E1 Tenancy** | Restaurant (tenant) → branches. Stock, POs and sales belong to a branch from day one; catalog and suppliers to the restaurant. Users, roles (owner, manager) |
 | **E2 Catalog** | Ingredients, units and conversions (kg ↔ g, case of 24), suppliers, recipes |
-| **E3 Purchasing** | PO lifecycle, partial receiving, short-close, supplier price per ingredient |
+| **E3 Purchasing** | PO lifecycle, partial receiving, short-close, supplier catalog (who supplies what, price, pack size) |
 | **E4 POS integration** | One POS vendor via webhook, menu-item mapping, idempotent ingestion, failed-event queue |
 | **E5 Stock truth** | Ledger, stock counts and variance, waste, low-stock alerts |
 

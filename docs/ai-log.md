@@ -102,3 +102,24 @@ A fresh `code-reviewer` agent, with no build context, was asked to look for corr
 | Reused `external_id` with a different payload returns 200 | Documented |
 
 Lesson: the agents' own tests covered the sales race but not the purchasing races. A second set of eyes with no build context found the gap.
+
+## Session 4 — Supplier ↔ ingredient mapping
+
+### Prompt 7 — think it through
+
+> Don't we need to map suppliers with which ingredients they can supply? Two suppliers can supply the same product.
+
+The AI agreed the real model is many-to-many and laid out three options: document it only, a minimal mapping, or a full supplier catalog with price and pack size. It recommended documenting only (YAGNI, and the brief doesn't ask for it).
+
+### Prompt 8 — decision
+
+> Do the minimal mapping, update docs and plans; the PO form should only show the selected supplier's items.
+
+I overruled the recommendation: ordering beef from the bakery is a real mistake the UI should prevent. Design decisions:
+
+- An explicit `SupplierItem` through model, not a plain many-to-many, so price and pack size can be added to it later.
+- The rule lives in the purchasing service (409 `ingredient_not_supplied`) and is checked only at PO creation, so editing a supplier's list never breaks open orders. The PO form's filtering is display only.
+
+The contract was updated first. The backend and frontend agents then built in parallel. This time the agents didn't touch git; the orchestrator reviewed and committed each side, which avoided the shared-tree clashes from session 2.
+
+**Agents' notes worth keeping:** the supplier's `ingredients` come back ordered by ingredient name, so the UI treats them as a set. Unticking everything leaves a supplier that can't be used on any new PO, which is allowed.

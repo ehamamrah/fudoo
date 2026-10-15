@@ -12,7 +12,7 @@ Requires Docker.
 
 ```bash
 make up      # postgres :5432, API :8000, UI :5173
-make seed    # sample ingredients, suppliers and the Classic Burger recipe (idempotent)
+make seed    # sample ingredients, suppliers with what they supply, and the Classic Burger recipe (idempotent)
 ```
 
 Open <http://localhost:5173>. Seeded stock starts at zero: create a purchase order, send it and record a delivery to bring stock in, then sell burgers from the **POS** page.
@@ -31,7 +31,7 @@ make test-be   # pytest against real Postgres (needed for row locks and DB const
 make test-fe   # Vitest + Testing Library
 ```
 
-The backend tests cover what has to be right: every legal and illegal PO transition, partial then full receiving, over-receipt, delivery against an order that can't receive, sale deduction, insufficient stock, duplicate POS events, `on_hand` equal to the sum of the ledger, and two concurrency tests using threads (two sales racing for the last stock; the same POS event sent twice at once).
+The backend tests cover what has to be right: every legal and illegal PO transition, ordering an ingredient the supplier doesn't supply, partial then full receiving, over-receipt, delivery against an order that can't receive, sale deduction, insufficient stock, duplicate POS events, `on_hand` equal to the sum of the ledger, and two concurrency tests using threads (two sales racing for the last stock; the same POS event sent twice at once).
 
 ## Architecture
 
@@ -39,7 +39,7 @@ A modular monolith with one Django app per module. Business rules live in each m
 
 | Module | Owns |
 |---|---|
-| `catalog` | Ingredient, Supplier, MenuItem, RecipeLine |
+| `catalog` | Ingredient, Supplier, SupplierItem (who supplies what), MenuItem, RecipeLine |
 | `inventory` | StockMovement ledger, `stock.increase()` / `stock.decrease()` — the **only** code that changes `on_hand` |
 | `purchasing` | PurchaseOrder, POLine, Delivery, DeliveryLine, the state machine, receiving |
 | `sales` | Sale, idempotent `record_sale()` |
@@ -50,17 +50,20 @@ The frontend has one folder per feature, and each feature has TanStack Query hoo
 ## Data model
 
 ```text
-Supplier ──< PurchaseOrder ──< POLine >── Ingredient ──< StockMovement (ledger)
-                  │               ▲            ▲
-                  └──< Delivery ──< DeliveryLine │
-                                                 │
-MenuItem ──< RecipeLine >────────────────────────┘
+Supplier ──< SupplierItem >───────────────────┐
+   │                                          ▼
+   └──< PurchaseOrder ──< POLine >──────── Ingredient ──< StockMovement (ledger)
+             │              ▲                 ▲
+             └──< Delivery ──< DeliveryLine   │
+                                              │
+MenuItem ──< RecipeLine >─────────────────────┘
     └──< Sale
 ```
 
 - `Ingredient.on_hand` is the current stock. Every change to it writes a `StockMovement` row (`+` delivery, `−` sale, with a reference such as `delivery:5`) in the same transaction, so `on_hand` always equals the sum of its movements.
+- `SupplierItem` links suppliers and ingredients many-to-many: a supplier lists what it supplies, and one ingredient can come from several suppliers (seeded Cheddar comes from Meat Co and Fresh Farms). A purchase order can only contain ingredients its supplier supplies.
 - Quantities are `Decimal(12, 3)` in the ingredient's unit (`g`, `ml`, `pcs`) and are sent as strings in JSON.
-- Database constraints back up the code: `on_hand >= 0`, `0 <= quantity_received <= quantity_ordered`, all quantities positive, unique `Sale.external_id`, one line per ingredient in each PO and recipe, and case-insensitive unique ingredient names.
+- Database constraints back up the code: `on_hand >= 0`, `0 <= quantity_received <= quantity_ordered`, all quantities positive, unique `Sale.external_id`, one line per ingredient in each PO and recipe, one link per supplier and ingredient, and case-insensitive unique ingredient names.
 
 ## Purchase order states
 
@@ -83,7 +86,8 @@ The transitions are a declarative table in `purchasing/state_machine.py`; there 
 | Cancelling | Allowed from `draft` and `sent` only | Once goods have arrived they are in stock; the order is closed instead. |
 | Over-delivery | **Rejected** (409 `over_receipt`); the whole delivery is rejected | Keeps `received ≤ ordered`. Extra goods mean amending the order. |
 | POS retries | `external_id` is required and unique; a repeat returns the original sale (200) and deducts nothing | Networks retry. Without this, one sale could be deducted twice. |
-| Editing after creation | No editing or deleting of ingredients, recipes or PO lines; a wrong draft PO is cancelled and recreated | The brief asks for create and list. Editing recipes would also raise history questions. |
+| Which supplier sells what | Each supplier lists the ingredients it supplies. A PO line for anything else is rejected (409 `ingredient_not_supplied`), and the PO form only offers the chosen supplier's items | Stops ordering beef from the bakery. Checked only when the PO is created, so changing a supplier's list never breaks open orders. `SupplierItem` is a bare link for now; price and pack size go on it later. |
+| Editing after creation | No editing or deleting of ingredients, recipes or PO lines (a supplier's list of items is the one exception); a wrong draft PO is cancelled and recreated | The brief asks for create and list. Editing recipes would also raise history questions. |
 | Units | One unit per ingredient, no conversions | Out of scope; the recipe uses the same unit as the stock. |
 | Up-to-date stock | Stock and open POs refresh every 5 s and after every change, with an "Updated Xs ago" indicator | The brief's "without having to guess". Polling is simpler than websockets and good enough for one branch. |
 | Low stock | Only "Out of stock" is shown | A real threshold needs a reorder level per ingredient; deferred. |
@@ -125,7 +129,8 @@ I used Claude Code throughout: one orchestrator session and two engineer subagen
 
 1. **Stock counts and adjustments:** record what is physically on the shelf and post the difference as an `adjustment` movement. This is the main way to show the numbers can be trusted.
 2. **Waste:** record spoiled or dropped ingredients so they don't show up as unexplained differences.
-3. **Reorder levels:** a threshold per ingredient, low-stock alerts, and a draft PO suggested from them.
-4. **Stock history page:** the ledger already exists, so show it per ingredient.
-5. **Tenancy:** restaurant → branches, with stock, POs and sales belonging to a branch (see [`PLAN.md`](PLAN.md)).
-6. **End-to-end tests** with Playwright for the purchase and sale flows; CI running both test suites.
+3. **Supplier prices and pack sizes:** price and pack size on `SupplierItem`, so orders are placed in cases and converted to stock units on receipt, with a preferred supplier per ingredient.
+4. **Reorder levels:** a threshold per ingredient, low-stock alerts, and a draft PO suggested from them and the preferred supplier.
+5. **Stock history page:** the ledger already exists, so show it per ingredient.
+6. **Tenancy:** restaurant → branches, with stock, POs and sales belonging to a branch (see [`PLAN.md`](PLAN.md)).
+7. **End-to-end tests** with Playwright for the purchase and sale flows; CI running both test suites.

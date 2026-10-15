@@ -11,7 +11,7 @@ Quantities are decimal strings with up to 3 decimal places, e.g. `"150.000"`. Re
 | 404 | Unknown id | `{"detail": "Not found."}` |
 | 409 | Valid input that breaks a business rule | `{"code": "<error_code>", "detail": "<human message>"}` |
 
-409 codes: `invalid_transition`, `po_not_receivable`, `over_receipt`, `insufficient_stock`.
+409 codes: `invalid_transition`, `po_not_receivable`, `over_receipt`, `insufficient_stock`, `ingredient_not_supplied`.
 `insufficient_stock` additionally carries `"shortages": [{"ingredient": 1, "name": "Beef", "required": "300.000", "available": "120.000"}]`.
 
 ## Ingredients
@@ -27,12 +27,16 @@ Quantities are decimal strings with up to 3 decimal places, e.g. `"150.000"`. Re
 ## Suppliers
 
 `GET /api/suppliers/` → `200 [Supplier]` ordered by name
-`POST /api/suppliers/` body `{"name": "Meat Co", "contact": "orders@meatco.test"}` → `201 Supplier`
+`POST /api/suppliers/` body `{"name": "Meat Co", "contact": "orders@meatco.test", "ingredients": [1, 3]}` → `201 Supplier`
+`GET /api/suppliers/{id}/` → `200 Supplier`
+`PATCH /api/suppliers/{id}/` body `{"ingredients": [1, 3, 4]}` → `200 Supplier`
 
 ```json
-{"id": 1, "name": "Meat Co", "contact": "orders@meatco.test"}
+{"id": 1, "name": "Meat Co", "contact": "orders@meatco.test", "ingredients": [1, 3]}
 ```
 - `name` unique. `contact` optional free text.
+- `ingredients` is the list of ingredient ids this supplier can supply. Optional on create (defaults to `[]`). On PATCH it **replaces** the whole list. Unknown ids → 400. An ingredient can be supplied by many suppliers.
+- PATCH may also change `name` or `contact`.
 
 ## Menu items (recipes)
 
@@ -82,6 +86,7 @@ Quantities are decimal strings with up to 3 decimal places, e.g. `"150.000"`. Re
 }
 ```
 - `lines` non-empty, quantity_ordered > 0, an ingredient appears at most once.
+- Every line's ingredient must be in the supplier's `ingredients`, else `409 ingredient_not_supplied` (detail names the ingredients) and nothing is created. Checked only at creation; later mapping changes don't affect existing orders.
 - `allowed_actions` lists the manual actions valid from the current status. The UI renders buttons from it.
 - `can_receive` is true when a delivery may be recorded (`sent` or `received`). The UI shows the receive form from it.
 
