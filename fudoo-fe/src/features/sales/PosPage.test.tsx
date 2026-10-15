@@ -1,8 +1,9 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { bodiesSentTo, mockApi } from "../../test/mockApi";
 import { renderPage } from "../../test/render";
+import { stubRandomUuid } from "../../test/uuid";
 import { PosPage } from "./PosPage";
 
 const burger = { id: 1, name: "Classic Burger", recipe: [] };
@@ -17,10 +18,7 @@ async function ringUp(quantity: string) {
 }
 
 describe("PosPage", () => {
-  beforeEach(() => {
-    let counter = 0;
-    vi.spyOn(crypto, "randomUUID").mockImplementation(() => `uuid-${++counter}` as `${string}-${string}-${string}-${string}-${string}`);
-  });
+  beforeEach(stubRandomUuid);
 
   it("lists recent sales", async () => {
     mockApi({ ...base, "GET /api/sales/": [sale] });

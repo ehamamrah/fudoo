@@ -1,12 +1,14 @@
-import { UNITS, type Unit } from "../../api/types";
+import { UNITS, type IngredientInput, type Unit } from "../../api/types";
 import { Button } from "../../components/Button";
 import { Field, Input, Select } from "../../components/Field";
 import { FormPanel } from "../../components/FormPanel";
 import { useFormState } from "../../lib/useFormState";
 import { useCreateIngredient } from "./hooks";
 
+const blankIngredient: IngredientInput = { name: "", unit: "g" };
+
 export function IngredientForm() {
-  const { values, setField, reset } = useFormState({ name: "", unit: "g" as Unit });
+  const { values, setField, reset } = useFormState(blankIngredient);
   const create = useCreateIngredient();
   return (
     <FormPanel title="New ingredient" error={create.error} onSubmit={() => create.mutate(values, { onSuccess: reset })}

@@ -18,7 +18,7 @@ export function IngredientChecklist({ label, ingredients, selected, onChange }: 
       <div className="flex flex-wrap gap-x-4 gap-y-1">
         {ingredients.map((ingredient) => (
           <label key={ingredient.id} className="flex items-center gap-2 text-slate-700">
-            <input type="checkbox" className="h-4 w-4 rounded border-slate-300 accent-brand-600" checked={selected.includes(ingredient.id)}
+            <input type="checkbox" className="h-4 w-4 rounded-sm border-slate-300 accent-brand-600" checked={selected.includes(ingredient.id)}
               onChange={() => onChange(toggled(selected, ingredient.id))} />
             {ingredient.name}
           </label>

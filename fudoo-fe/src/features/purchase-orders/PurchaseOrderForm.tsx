@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import type { Ingredient, PurchaseOrderInput, Supplier } from "../../api/types";
+import { useNavigate } from "react-router";
+import type { Ingredient, PurchaseOrder, PurchaseOrderInput, Supplier } from "../../api/types";
 import { Button } from "../../components/Button";
 import { Field, Select } from "../../components/Field";
 import { FormPanel } from "../../components/FormPanel";
 import { TextLink } from "../../components/TextLink";
+import { useAttemptId } from "../../lib/useAttemptId";
 import { IngredientLines } from "../ingredients/IngredientLines";
 import { useLineDrafts, type LineDraft } from "../ingredients/useLineDrafts";
 import { useCreatePurchaseOrder } from "./hooks";
@@ -20,9 +21,9 @@ interface LineSectionProps {
   drafts: ReturnType<typeof useLineDrafts>;
 }
 
-function toInput(supplier: string, lines: LineDraft[]): PurchaseOrderInput {
+function toInput(requestId: string, supplier: string, lines: LineDraft[]): PurchaseOrderInput {
   const orderLines = lines.map((line) => ({ ingredient: Number(line.ingredient), quantity_ordered: line.quantity }));
-  return { supplier: Number(supplier), lines: orderLines };
+  return { request_id: requestId, supplier: Number(supplier), lines: orderLines };
 }
 
 function offeredBy(supplier: Supplier | undefined, ingredients: Ingredient[]): Ingredient[] {
@@ -57,12 +58,13 @@ function LineSection({ supplier, offered, drafts }: LineSectionProps) {
 function usePurchaseOrderForm({ suppliers, ingredients }: PurchaseOrderFormProps) {
   const [supplierId, setSupplierId] = useState("");
   const drafts = useLineDrafts();
+  const attempt = useAttemptId();
   const create = useCreatePurchaseOrder();
   const navigate = useNavigate();
   const supplier = suppliers.find((candidate) => String(candidate.id) === supplierId);
   const chooseSupplier = (id: string) => { setSupplierId(id); drafts.reset(); };
-  const submit = () =>
-    create.mutate(toInput(supplierId, drafts.lines), { onSuccess: (order) => navigate(`/purchase-orders/${order.id}`) });
+  const open = (order: PurchaseOrder) => { attempt.renew(); void navigate(`/purchase-orders/${order.id}`); };
+  const submit = () => create.mutate(toInput(attempt.id, supplierId, drafts.lines), { onSuccess: open });
   return { supplierId, chooseSupplier, supplier, offered: offeredBy(supplier, ingredients), drafts, create, submit };
 }
 

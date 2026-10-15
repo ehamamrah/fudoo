@@ -71,11 +71,13 @@ export interface PurchaseOrder {
 }
 
 export interface PurchaseOrderInput {
+  request_id: string;
   supplier: number;
   lines: { ingredient: number; quantity_ordered: Quantity }[];
 }
 
 export interface DeliveryInput {
+  request_id: string;
   lines: { line: number; quantity: Quantity }[];
 }
 

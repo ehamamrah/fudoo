@@ -3,7 +3,7 @@ import { createSale, listSales } from "../../api/sales";
 import { useInvalidatingMutation } from "../../lib/useInvalidatingMutation";
 import { ingredientKeys } from "../ingredients/hooks";
 
-export const saleKeys = { all: ["sales"] as const };
+const saleKeys = { all: ["sales"] as const };
 
 export function useSales() {
   return useQuery({ queryKey: saleKeys.all, queryFn: listSales });

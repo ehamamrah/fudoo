@@ -22,7 +22,7 @@ function LiveDot() {
 export function UpdatedAgo({ updatedAt }: { updatedAt: number }) {
   const now = useNow(1000);
   return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm ring-1 ring-slate-200">
+    <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-xs ring-1 ring-slate-200">
       <LiveDot />
       <span>{updatedAt ? `Updated ${secondsSince(updatedAt, now)}s ago` : "Loading…"}</span>
     </span>

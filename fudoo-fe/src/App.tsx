@@ -1,5 +1,7 @@
-import { NavLink, Route, Routes } from "react-router-dom";
+import { Suspense } from "react";
+import { NavLink, Route, Routes } from "react-router";
 import { Icon } from "./components/Icon";
+import { Loading } from "./components/QueryState";
 import { routes, SECTIONS } from "./routes";
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -9,7 +11,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 function Brand() {
   return (
     <div className="flex items-center gap-3 px-2">
-      <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 text-lg font-bold text-white shadow-lg shadow-brand-500/30">
+      <span className="grid h-9 w-9 place-items-center rounded-xl bg-linear-to-br from-brand-400 to-brand-600 text-lg font-bold text-white shadow-lg shadow-brand-500/30">
         F
       </span>
       <div className="leading-tight">
@@ -51,9 +53,11 @@ export default function App() {
     <div className="min-h-screen lg:pl-64">
       <Sidebar />
       <main className="mx-auto min-w-0 max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
-        <Routes>
-          {routes.map((route) => <Route key={route.path} path={route.path} element={route.element} />)}
-        </Routes>
+        <Suspense fallback={<Loading />}>
+          <Routes>
+            {routes.map((route) => <Route key={route.path} path={route.path} element={route.element} />)}
+          </Routes>
+        </Suspense>
       </main>
     </div>
   );

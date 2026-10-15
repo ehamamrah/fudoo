@@ -1,20 +1,18 @@
-import { useState } from "react";
 import type { MenuItem, Sale } from "../../api/types";
 import { Button } from "../../components/Button";
 import { Field, Input, Select } from "../../components/Field";
 import { FormPanel } from "../../components/FormPanel";
+import { useAttemptId } from "../../lib/useAttemptId";
 import { useFormState } from "../../lib/useFormState";
 import { useCreateSale } from "./hooks";
 
-const newExternalId = () => crypto.randomUUID();
-
 function useSaleForm() {
   const { values, setField } = useFormState({ menuItem: "", quantity: "1" });
-  const [externalId, setExternalId] = useState(newExternalId);
+  const attempt = useAttemptId();
   const create = useCreateSale();
-  const input = { external_id: externalId, menu_item: Number(values.menuItem), quantity: Number(values.quantity) };
-  const submit = () => create.mutate(input, { onSuccess: () => setExternalId(newExternalId()) });
-  return { values, setField, externalId, create, submit };
+  const input = { external_id: attempt.id, menu_item: Number(values.menuItem), quantity: Number(values.quantity) };
+  const submit = () => create.mutate(input, { onSuccess: attempt.renew });
+  return { values, setField, externalId: attempt.id, create, submit };
 }
 
 function MenuItemSelect({ items, value, onChange }: { items: MenuItem[]; value: string; onChange: (id: string) => void }) {
@@ -28,7 +26,7 @@ function MenuItemSelect({ items, value, onChange }: { items: MenuItem[]; value: 
 
 function SaleResult({ sale }: { sale: Sale }) {
   return (
-    <p role="status" className="rounded border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-800">
+    <p role="status" className="rounded-sm border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-800">
       Sale #{sale.id} recorded: {sale.quantity} × {sale.menu_item_name}
     </p>
   );

@@ -1,9 +1,10 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import type { PurchaseOrderAction } from "../../api/types";
-import { bodiesSentTo, mockApi, type Routes } from "../../test/mockApi";
+import { bodiesSentTo, inSequence, mockApi, networkError, requestsTo, type Routes } from "../../test/mockApi";
 import { renderPage } from "../../test/render";
+import { stubRandomUuid } from "../../test/uuid";
 import { PurchaseOrderDetailPage } from "./PurchaseOrderDetailPage";
 import { purchaseOrder } from "./fixtures";
 
@@ -19,8 +20,11 @@ function renderDetail(routes: Routes) {
 }
 
 function detailFetches(fetchMock: ReturnType<typeof mockApi>): number {
-  return fetchMock.mock.calls.filter(([url, init]) => String(url) === DETAIL && !init?.method).length;
+  return requestsTo(fetchMock, "GET", DETAIL).length;
 }
+
+const deliveryIdsSent = (fetchMock: ReturnType<typeof mockApi>) =>
+  bodiesSentTo(fetchMock, "POST", DELIVERIES).map((body) => (body as { request_id: string }).request_id);
 
 function actionButtonLabels(): string[] {
   return ALL_LABELS.filter((label) => screen.queryByRole("button", { name: label }));
@@ -76,6 +80,8 @@ describe("PurchaseOrderDetailPage", () => {
 });
 
 describe("ReceiveForm", () => {
+  beforeEach(stubRandomUuid);
+
   it("prefills each line with its outstanding quantity", async () => {
     renderDetail({ [`GET ${DETAIL}`]: purchaseOrder() });
     expect(await screen.findByLabelText("Receive Beef")).toHaveValue(2000);
@@ -90,7 +96,7 @@ describe("ReceiveForm", () => {
     await userEvent.clear(screen.getByLabelText("Receive Beef"));
     await userEvent.type(screen.getByLabelText("Receive Beef"), "1500.5");
     await userEvent.click(screen.getByRole("button", { name: "Record delivery" }));
-    await waitFor(() => expect(bodiesSentTo(fetchMock, "POST", DELIVERIES)).toEqual([{ lines: [{ line: 11, quantity: "1500.5" }] }]));
+    await waitFor(() => expect(bodiesSentTo(fetchMock, "POST", DELIVERIES)).toEqual([{ request_id: "uuid-1", lines: [{ line: 11, quantity: "1500.5" }] }]));
   });
 
   it("sends negative entries as typed so the API can reject them", async () => {
@@ -100,7 +106,7 @@ describe("ReceiveForm", () => {
     await userEvent.clear(beef);
     await userEvent.type(beef, "-5");
     await userEvent.click(screen.getByRole("button", { name: "Record delivery" }));
-    const expected = { lines: [{ line: 11, quantity: "-5" }, { line: 12, quantity: "60" }] };
+    const expected = { request_id: "uuid-1", lines: [{ line: 11, quantity: "-5" }, { line: 12, quantity: "60" }] };
     await waitFor(() => expect(bodiesSentTo(fetchMock, "POST", DELIVERIES)).toEqual([expected]));
     expect(await screen.findByRole("alert")).toHaveTextContent("lines 1.quantity: Ensure this value is greater than 0.");
   });
@@ -117,5 +123,26 @@ describe("ReceiveForm", () => {
     renderDetail({ [`GET ${DETAIL}`]: purchaseOrder(), [`POST ${DELIVERIES}`]: error });
     await userEvent.click(await screen.findByRole("button", { name: "Record delivery" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Beef: 2500 exceeds outstanding 2000.");
+  });
+
+  it("reuses the request_id when retrying a failed delivery and renews it after success", async () => {
+    const recorded = { status: 201, body: purchaseOrder() };
+    const fetchMock = renderDetail({ [`GET ${DETAIL}`]: purchaseOrder(), [`POST ${DELIVERIES}`]: inSequence(networkError, recorded) });
+    const submit = await screen.findByRole("button", { name: "Record delivery" });
+    await userEvent.click(submit);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Failed to fetch");
+    await userEvent.click(submit);
+    await waitFor(() => expect(deliveryIdsSent(fetchMock)).toEqual(["uuid-1", "uuid-1"]));
+    await waitFor(() => expect(submit).toBeEnabled());
+    await userEvent.click(submit);
+    await waitFor(() => expect(deliveryIdsSent(fetchMock)).toEqual(["uuid-1", "uuid-1", "uuid-2"]));
+  });
+
+  it("shows the idempotency_conflict detail from the API", async () => {
+    const detail = "request_id was already used for other lines.";
+    const conflict = { status: 409, body: { code: "idempotency_conflict", detail } };
+    renderDetail({ [`GET ${DETAIL}`]: purchaseOrder(), [`POST ${DELIVERIES}`]: conflict });
+    await userEvent.click(await screen.findByRole("button", { name: "Record delivery" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(detail);
   });
 });

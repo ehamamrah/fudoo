@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { PurchaseOrder, PurchaseOrderFilter } from "../../api/types";
 import { Button } from "../../components/Button";
 import { Page } from "../../components/Page";
@@ -41,13 +41,13 @@ function OrderRow({ order }: { order: PurchaseOrder }) {
   );
 }
 
-function OrderTable({ orders }: { orders: PurchaseOrder[] }) {
+const OrderTable = memo(function OrderTable({ orders }: { orders: PurchaseOrder[] }) {
   return (
     <Table headers={["Order", "Supplier", "Status", "Created", "Lines"]} empty={orders.length === 0}>
       {orders.map((order) => <OrderRow key={order.id} order={order} />)}
     </Table>
   );
-}
+});
 
 function OrderList() {
   const [filter, setFilter] = useState<PurchaseOrderFilter>("all");

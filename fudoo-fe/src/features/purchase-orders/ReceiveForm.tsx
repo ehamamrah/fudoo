@@ -4,6 +4,7 @@ import { Button } from "../../components/Button";
 import { Input } from "../../components/Field";
 import { FormPanel } from "../../components/FormPanel";
 import { formatQuantity, isEmptyOrZero } from "../../lib/format";
+import { useAttemptId } from "../../lib/useAttemptId";
 import { useReceiveDelivery } from "./hooks";
 
 type Quantities = Record<number, string>;
@@ -12,9 +13,9 @@ function outstandingByLine(lines: PurchaseOrderLine[]): Quantities {
   return Object.fromEntries(lines.map((line) => [line.id, formatQuantity(line.quantity_outstanding)]));
 }
 
-function toDelivery(quantities: Quantities): DeliveryInput {
+function toDelivery(requestId: string, quantities: Quantities): DeliveryInput {
   const entries = Object.entries(quantities).filter(([, quantity]) => !isEmptyOrZero(quantity));
-  return { lines: entries.map(([line, quantity]) => ({ line: Number(line), quantity: quantity.trim() })) };
+  return { request_id: requestId, lines: entries.map(([line, quantity]) => ({ line: Number(line), quantity: quantity.trim() })) };
 }
 
 interface ReceiveLineProps {
@@ -36,10 +37,11 @@ function ReceiveLine({ line, value, onChange }: ReceiveLineProps) {
 
 function useReceiveForm(order: PurchaseOrder) {
   const [quantities, setQuantities] = useState(() => outstandingByLine(order.lines));
+  const attempt = useAttemptId();
   const receive = useReceiveDelivery(order.id);
-  const delivery = toDelivery(quantities);
+  const delivery = toDelivery(attempt.id, quantities);
   const setLine = (id: number, value: string) => setQuantities((current) => ({ ...current, [id]: value }));
-  const submit = () => delivery.lines.length > 0 && receive.mutate(delivery);
+  const submit = () => delivery.lines.length > 0 && receive.mutate(delivery, { onSuccess: attempt.renew });
   return { quantities, setLine, submit, receive, isEmpty: delivery.lines.length === 0 };
 }
 

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { Ingredient } from "../../api/types";
 import { Badge } from "../../components/Badge";
 import { Page } from "../../components/Page";
@@ -6,7 +7,7 @@ import { StatCard } from "../../components/StatCard";
 import { Cell, Row, Table } from "../../components/Table";
 import { UpdatedAgo } from "../../components/UpdatedAgo";
 import { formatQuantity, isEmptyOrZero } from "../../lib/format";
-import { useIngredients } from "../ingredients/hooks";
+import { useStock } from "./hooks";
 
 function StockRow({ ingredient }: { ingredient: Ingredient }) {
   const out = isEmptyOrZero(ingredient.on_hand);
@@ -38,17 +39,17 @@ function StockSummary({ ingredients }: { ingredients: Ingredient[] }) {
   );
 }
 
-function StockOverview({ ingredients }: { ingredients: Ingredient[] }) {
+const StockOverview = memo(function StockOverview({ ingredients }: { ingredients: Ingredient[] }) {
   return (
     <div className="flex flex-col gap-6">
       <StockSummary ingredients={ingredients} />
       <StockTable ingredients={ingredients} />
     </div>
   );
-}
+});
 
 export function StockPage() {
-  const ingredients = useIngredients();
+  const ingredients = useStock();
   return (
     <Page title="Stock" description="What is in the storeroom right now." aside={<UpdatedAgo updatedAt={ingredients.dataUpdatedAt} />}>
       <QueryState query={ingredients}>{(data) => <StockOverview ingredients={data} />}</QueryState>

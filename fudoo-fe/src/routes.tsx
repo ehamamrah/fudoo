@@ -1,16 +1,21 @@
-import type { ReactNode } from "react";
+import { lazy, type ComponentType, type ReactNode } from "react";
 import type { IconName } from "./components/Icon";
-import { IngredientsPage } from "./features/ingredients/IngredientsPage";
-import { MenuItemsPage } from "./features/menu-items/MenuItemsPage";
-import { PurchaseOrderDetailPage } from "./features/purchase-orders/PurchaseOrderDetailPage";
-import { PurchaseOrdersPage } from "./features/purchase-orders/PurchaseOrdersPage";
-import { PosPage } from "./features/sales/PosPage";
-import { StockPage } from "./features/stock/StockPage";
-import { SuppliersPage } from "./features/suppliers/SuppliersPage";
+
+function lazyPage<K extends string>(load: () => Promise<Record<K, ComponentType>>, name: K) {
+  return lazy(() => load().then((module) => ({ default: module[name] })));
+}
+
+const StockPage = lazyPage(() => import("./features/stock/StockPage"), "StockPage");
+const PurchaseOrdersPage = lazyPage(() => import("./features/purchase-orders/PurchaseOrdersPage"), "PurchaseOrdersPage");
+const PurchaseOrderDetailPage = lazyPage(() => import("./features/purchase-orders/PurchaseOrderDetailPage"), "PurchaseOrderDetailPage");
+const PosPage = lazyPage(() => import("./features/sales/PosPage"), "PosPage");
+const IngredientsPage = lazyPage(() => import("./features/ingredients/IngredientsPage"), "IngredientsPage");
+const SuppliersPage = lazyPage(() => import("./features/suppliers/SuppliersPage"), "SuppliersPage");
+const MenuItemsPage = lazyPage(() => import("./features/menu-items/MenuItemsPage"), "MenuItemsPage");
 
 export const SECTIONS = ["Overview", "Operations", "Catalog"] as const;
 
-export interface AppRoute {
+interface AppRoute {
   path: string;
   element: ReactNode;
   nav?: { label: string; icon: IconName; section: (typeof SECTIONS)[number] };

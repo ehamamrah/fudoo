@@ -11,7 +11,7 @@ import { useInvalidatingMutation } from "../../lib/useInvalidatingMutation";
 import { POLL_INTERVAL_MS } from "../../queryClient";
 import { ingredientKeys } from "../ingredients/hooks";
 
-export const purchaseOrderKeys = {
+const purchaseOrderKeys = {
   all: ["purchase-orders"] as const,
   list: (filter: PurchaseOrderFilter) => ["purchase-orders", "list", filter] as const,
   detail: (id: number) => ["purchase-orders", "detail", id] as const,

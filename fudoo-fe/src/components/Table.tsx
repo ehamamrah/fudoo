@@ -8,7 +8,7 @@ interface TableProps {
 
 export function Table({ headers, children, empty = false }: TableProps) {
   return (
-    <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+    <div className="overflow-x-auto rounded-2xl bg-white shadow-xs ring-1 ring-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead className="bg-slate-50 text-left">
           <tr>{headers.map((header) => <HeaderCell key={header}>{header}</HeaderCell>)}</tr>

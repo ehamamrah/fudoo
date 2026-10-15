@@ -1,6 +1,6 @@
 # fudoo-fe — Implementation Plan
 
-Vite + React 18 + TypeScript (strict) + Tailwind + TanStack Query + React Router. Contract: `../docs/api-contract.md`. Rules: `../AGENTS.md`.
+Node 26, Vite 8, React 19, TypeScript 7 (strict), Tailwind 4, TanStack Query 5, React Router 8, ESLint 10. Vitest 5 + Testing Library. Contract: `../docs/api-contract.md`. Rules: `../AGENTS.md`.
 
 ## Structure
 
@@ -19,12 +19,14 @@ src/
 
 ## Decisions taken during the build
 
-- Tailwind v3 with PostCSS. Status: all seven steps done.
+- Tailwind v4 via `@tailwindcss/vite`, CSS-first: Inter and the orange `brand` palette live in `@theme` in `src/index.css`. Status: all seven steps done.
+- TypeScript: `tsc` is TypeScript 7 (package alias `typescript-7`). The `typescript` module name points at `@typescript/typescript6` because typescript-eslint needs the TS 6 JS API (`typescript <6.1`), which TS 7 no longer ships.
+- Idempotency: the PO create form, the receive form and the POS form each hold one id per attempt (`lib/useAttemptId`). Retries reuse it; it is renewed only after a success.
+- Each route is its own lazy chunk. Queries default to a 30 s `staleTime`; only stock, open POs and PO detail poll (5 s), never in a background tab.
 - PO receive form is shown from the API's `can_receive` flag; action buttons from `allowed_actions`. The UI holds no state-machine knowledge.
 - Stock shows Out of stock / In stock only. A "low" threshold needs a backend `reorder_level`; deferred (YAGNI).
 - Supplier ingredient filtering in the PO form is display-only, driven by `Supplier.ingredients` from the API. The backend enforces the rule (`409 ingredient_not_supplied`) and the form shows its `detail` verbatim. Changing the supplier resets the lines.
-- Visual design lives in the shared components (`components/`): sidebar shell with grouped nav (top bar on phones), Inter, slate palette with an orange `brand` accent in `tailwind.config.js`. Pages only compose components, so restyling never touches feature logic.
-- POS keeps one `external_id` per attempt and regenerates it only after a successful sale, so a resubmit after a network failure stays idempotent.
+- Visual design lives in the shared components (`components/`): sidebar shell with grouped nav (top bar on phones), Inter, slate palette with an orange `brand` accent in `@theme`. Pages only compose components, so restyling never touches feature logic.
 
 ## Build order (one commit + push per step)
 
@@ -41,8 +43,9 @@ src/
 - `client.ts` maps a 409 body to `ApiError` with code, detail and shortages.
 - PO detail renders exactly the buttons in `allowed_actions`.
 - Receive form prefills outstanding quantities, skips only empty or zero lines and sends every other value as typed.
+- PO create and receive forms reuse `request_id` on a retry after failure and send a new one after success; `idempotency_conflict` detail is shown verbatim.
 - POS form lists shortages on `insufficient_stock`.
 
 ## Run
 
-`make test-fe`, or `npm test` inside `fudoo-fe/`.
+`make test-fe`, `make audit-fe` (npm audit + lint), or `npm test` / `npm run lint` inside `fudoo-fe/`.

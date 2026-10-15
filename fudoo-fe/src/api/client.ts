@@ -41,7 +41,7 @@ function describe(status: number, body: unknown): string {
   return messages.length > 0 ? messages.join("; ") : `Request failed with status ${status}`;
 }
 
-export function toApiError(status: number, body: unknown): ApiError {
+function toApiError(status: number, body: unknown): ApiError {
   const code = isRecord(body) && typeof body.code === "string" ? body.code : null;
   const shortages = isRecord(body) && Array.isArray(body.shortages) ? (body.shortages as Shortage[]) : [];
   return new ApiError(status, code, describe(status, body), shortages);
@@ -57,7 +57,7 @@ async function readBody(response: Response): Promise<unknown> {
   }
 }
 
-export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`/api${path}`, {
     ...init,
     headers: { Accept: "application/json", "Content-Type": "application/json", ...init.headers },

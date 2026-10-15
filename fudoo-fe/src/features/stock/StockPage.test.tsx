@@ -1,6 +1,6 @@
 import { act, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mockApi } from "../../test/mockApi";
+import { mockApi, requestsTo } from "../../test/mockApi";
 import { renderPage } from "../../test/render";
 import { StockPage } from "./StockPage";
 
@@ -27,7 +27,7 @@ describe("StockPage", () => {
     const fetchMock = mockApi({ "GET /api/ingredients/": ingredients });
     renderPage(<StockPage />);
     await screen.findByText("Beef");
-    const ingredientCalls = () => fetchMock.mock.calls.filter(([url]) => String(url) === "/api/ingredients/").length;
+    const ingredientCalls = () => requestsTo(fetchMock, "GET", "/api/ingredients/").length;
     const before = ingredientCalls();
     await act(() => vi.advanceTimersByTimeAsync(5000));
     expect(ingredientCalls()).toBeGreaterThan(before);

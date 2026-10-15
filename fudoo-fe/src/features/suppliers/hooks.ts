@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createSupplier, listSuppliers, updateSupplierIngredients } from "../../api/suppliers";
 import { useInvalidatingMutation } from "../../lib/useInvalidatingMutation";
 
-export const supplierKeys = { all: ["suppliers"] as const };
+const supplierKeys = { all: ["suppliers"] as const };
 
 export function useSuppliers() {
   return useQuery({ queryKey: supplierKeys.all, queryFn: listSuppliers });

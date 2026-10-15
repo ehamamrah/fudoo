@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import type { PurchaseOrder } from "../../api/types";
 import { Icon } from "../../components/Icon";
 import { Page } from "../../components/Page";
@@ -44,7 +44,7 @@ function Meta({ label, children }: { label: string; children: ReactNode }) {
 
 function OrderSummary({ order }: { order: PurchaseOrder }) {
   return (
-    <div className="flex flex-col gap-5 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
+    <div className="flex flex-col gap-5 rounded-2xl bg-white p-5 shadow-xs ring-1 ring-slate-200 sm:p-6">
       <dl className="grid gap-4 sm:grid-cols-3">
         <Meta label="Status"><StatusBadge status={order.status} /></Meta>
         <Meta label="Supplier">{order.supplier_name}</Meta>
