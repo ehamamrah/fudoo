@@ -1,6 +1,9 @@
+from decimal import Decimal
+
 import pytest
 
 from purchasing.models import PurchaseOrder, Status
+from purchasing.services import create_purchase_order
 
 pytestmark = pytest.mark.django_db
 
@@ -39,11 +42,16 @@ def test_invalid_purchase_order_lines_rejected(api, supplier, beef, lines):
     assert not PurchaseOrder.objects.exists()
 
 
-def test_list_newest_first_and_open_filter(api, order, order_in, supplier, beef):
+def test_list_newest_first(api, order, supplier):
     newer = PurchaseOrder.objects.create(supplier=supplier)
-    order_in(order, Status.SENT)
     assert [o["id"] for o in api.get("/api/purchase-orders/").json()] == [newer.id, order.id]
-    assert [o["id"] for o in api.get("/api/purchase-orders/?status=open").json()] == [order.id]
+
+
+def test_open_filter_returns_only_sent_and_received(api, order_in, supplier, beef):
+    lines = [{"ingredient": beef, "quantity_ordered": Decimal("10")}]
+    orders = {status: order_in(create_purchase_order(supplier, lines), status) for status in Status}
+    listed = {o["id"]: o["status"] for o in api.get("/api/purchase-orders/?status=open").json()}
+    assert listed == {orders[Status.SENT].id: "sent", orders[Status.RECEIVED].id: "received"}
 
 
 def test_retrieve_and_unknown_id(api, order):

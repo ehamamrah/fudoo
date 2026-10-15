@@ -2,12 +2,12 @@ from decimal import Decimal
 
 import pytest
 from django.db import IntegrityError, transaction
-from django.db.models import Sum
 
 from catalog.models import Ingredient
 from inventory import stock
 from inventory.errors import InsufficientStock
 from inventory.models import StockMovement
+from inventory.testing import ledger_total
 
 pytestmark = pytest.mark.django_db
 DELIVERY = StockMovement.Reason.DELIVERY
@@ -17,10 +17,6 @@ SALE = StockMovement.Reason.SALE
 def on_hand(ingredient):
     ingredient.refresh_from_db()
     return ingredient.on_hand
-
-
-def ledger_total(ingredient):
-    return StockMovement.objects.filter(ingredient=ingredient).aggregate(t=Sum("quantity"))["t"]
 
 
 def test_increase_updates_on_hand_and_writes_movement(beef):

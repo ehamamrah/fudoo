@@ -22,6 +22,11 @@ class PurchaseOrder(models.Model):
 
     class Meta:
         ordering = ["-created_at", "-id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(status__in=Status.values), name="purchase_order_status_valid"
+            ),
+        ]
 
 
 class POLine(models.Model):

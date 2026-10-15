@@ -5,6 +5,16 @@ from rest_framework.test import APIClient
 
 from catalog.models import Ingredient, Supplier
 from catalog.services import create_menu_item
+from inventory import stock
+from inventory.models import StockMovement
+
+
+def build_burger(beef, bun, name="Classic Burger"):
+    recipe = [
+        {"ingredient": beef, "quantity": Decimal("150")},
+        {"ingredient": bun, "quantity": Decimal("1")},
+    ]
+    return create_menu_item(name, recipe)
 
 
 @pytest.fixture
@@ -29,8 +39,21 @@ def supplier(db):
 
 @pytest.fixture
 def burger(beef, bun):
-    recipe = [
-        {"ingredient": beef, "quantity": Decimal("150")},
-        {"ingredient": bun, "quantity": Decimal("1")},
-    ]
-    return create_menu_item("Classic Burger", recipe)
+    return build_burger(beef, bun)
+
+
+@pytest.fixture
+def fresh_burger(db):
+    def build(tag):
+        beef = Ingredient.objects.create(name=f"Beef {tag}", unit="g")
+        bun = Ingredient.objects.create(name=f"Bun {tag}", unit="pcs")
+        return build_burger(beef, bun, f"Burger {tag}"), beef, bun
+    return build
+
+
+@pytest.fixture
+def stock_up(db):
+    def add(*pairs):
+        quantities = {ingredient.id: Decimal(quantity) for ingredient, quantity in pairs}
+        stock.increase(quantities, StockMovement.Reason.DELIVERY, "test")
+    return add

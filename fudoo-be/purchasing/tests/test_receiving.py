@@ -5,7 +5,7 @@ from django.db import IntegrityError, transaction
 
 from inventory.models import StockMovement
 from purchasing.errors import OverReceipt, PONotReceivable
-from purchasing.models import Delivery, POLine, Status
+from purchasing.models import Delivery, POLine, PurchaseOrder, Status
 from purchasing.services import receive_delivery
 
 pytestmark = pytest.mark.django_db
@@ -69,3 +69,8 @@ def test_delivery_on_non_receivable_order_rejected(order, order_in, lines, statu
 def test_database_rejects_received_above_ordered(lines):
     with pytest.raises(IntegrityError), transaction.atomic():
         POLine.objects.filter(pk=lines["Bun"].pk).update(quantity_received=Decimal("101"))
+
+
+def test_database_rejects_unknown_status(order):
+    with pytest.raises(IntegrityError), transaction.atomic():
+        PurchaseOrder.objects.filter(pk=order.pk).update(status="lost")

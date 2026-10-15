@@ -42,6 +42,8 @@ def test_insufficient_stock_returns_409_with_shortages(api, burger, beef, bun, s
 @pytest.mark.parametrize(("field", "body"), [
     ("quantity", {"external_id": "x", "quantity": 0}),
     ("quantity", {"external_id": "x", "quantity": "1.5"}),
+    ("quantity", {"external_id": "x", "quantity": 10001}),
+    ("quantity", {"external_id": "x", "quantity": 3000000000}),
     ("external_id", {"quantity": 1}),
     ("menu_item", {"external_id": "x", "quantity": 1, "menu_item": 999999}),
 ])
