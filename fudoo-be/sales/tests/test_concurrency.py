@@ -16,22 +16,22 @@ pytestmark = pytest.mark.django_db(transaction=True)
 def race(*calls):
     barrier = threading.Barrier(len(calls))
     outcomes = []
-
-    def run(call):
-        try:
-            barrier.wait()
-            outcomes.append(call())
-        except InsufficientStock as error:
-            outcomes.append(error)
-        finally:
-            connection.close()
-
-    threads = [threading.Thread(target=run, args=(call,)) for call in calls]
+    threads = [threading.Thread(target=_run, args=(call, barrier, outcomes)) for call in calls]
     for thread in threads:
         thread.start()
     for thread in threads:
         thread.join()
     return outcomes
+
+
+def _run(call, barrier, outcomes):
+    try:
+        barrier.wait()
+        outcomes.append(call())
+    except InsufficientStock as error:
+        outcomes.append(error)
+    finally:
+        connection.close()
 
 
 def test_two_sales_racing_for_last_stock_cannot_both_succeed(burger, beef, bun, stock_up):
