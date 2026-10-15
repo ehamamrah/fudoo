@@ -31,12 +31,25 @@ class Ingredient(models.Model):
 class Supplier(models.Model):
     name = models.CharField(max_length=100, unique=True)
     contact = models.CharField(max_length=255, blank=True, default="")
+    ingredients = models.ManyToManyField(
+        Ingredient, through="SupplierItem", related_name="suppliers", blank=True
+    )
 
     class Meta:
         ordering = ["name"]
 
     def __str__(self):
         return self.name
+
+
+class SupplierItem(models.Model):
+    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE)
+    ingredient = models.ForeignKey(Ingredient, on_delete=models.PROTECT)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["supplier", "ingredient"], name="supplier_item_unique"),
+        ]
 
 
 class MenuItem(models.Model):

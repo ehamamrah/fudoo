@@ -13,6 +13,7 @@ pytestmark = pytest.mark.django_db(transaction=True)
 
 
 def sent_order(supplier, *pairs):
+    supplier.ingredients.add(*(ingredient for ingredient, _ in pairs))
     lines = [{"ingredient": ingredient, "quantity_ordered": Decimal(q)} for ingredient, q in pairs]
     order = create_purchase_order(supplier, lines)
     perform_action(order.id, "send")

@@ -42,6 +42,14 @@ def test_invalid_purchase_order_lines_rejected(api, supplier, beef, lines):
     assert not PurchaseOrder.objects.exists()
 
 
+def test_unsupplied_ingredient_returns_409_and_creates_nothing(api, supplier, beef, lettuce):
+    lines = [{"ingredient": beef.id, "quantity_ordered": "1"}, {"ingredient": lettuce.id, "quantity_ordered": "1"}]
+    response = api.post("/api/purchase-orders/", {"supplier": supplier.id, "lines": lines})
+    assert response.status_code == 409
+    assert response.json() == {"code": "ingredient_not_supplied", "detail": "Meat Co does not supply: Lettuce."}
+    assert not PurchaseOrder.objects.exists()
+
+
 def test_list_newest_first(api, order, supplier):
     newer = PurchaseOrder.objects.create(supplier=supplier)
     assert [o["id"] for o in api.get("/api/purchase-orders/").json()] == [newer.id, order.id]

@@ -4,12 +4,13 @@ from django.shortcuts import get_object_or_404
 from inventory import stock
 from inventory.models import StockMovement
 from purchasing import state_machine
-from purchasing.errors import OverReceipt, PONotReceivable
+from purchasing.errors import IngredientNotSupplied, OverReceipt, PONotReceivable
 from purchasing.models import Delivery, DeliveryLine, POLine, PurchaseOrder
 
 
 @transaction.atomic
 def create_purchase_order(supplier, lines):
+    _reject_unsupplied(supplier, [line["ingredient"] for line in lines])
     order = PurchaseOrder.objects.create(supplier=supplier)
     POLine.objects.bulk_create(POLine(purchase_order=order, **line) for line in lines)
     return order
@@ -34,6 +35,13 @@ def receive_delivery(order_id, lines):
     _increase_stock(received, delivery)
     state_machine.record_delivery(order, _fully_received(po_lines.values()))
     return order
+
+
+def _reject_unsupplied(supplier, ingredients):
+    supplied = set(supplier.ingredients.values_list("id", flat=True))
+    unsupplied = [ingredient for ingredient in ingredients if ingredient.id not in supplied]
+    if unsupplied:
+        raise IngredientNotSupplied(supplier, unsupplied)
 
 
 def _lock(order_id):

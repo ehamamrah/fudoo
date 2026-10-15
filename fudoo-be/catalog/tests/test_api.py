@@ -1,6 +1,6 @@
 import pytest
 
-from catalog.models import MenuItem
+from catalog.models import MenuItem, Supplier
 
 pytestmark = pytest.mark.django_db
 
@@ -43,6 +43,70 @@ def test_create_and_list_suppliers(api):
 
 def test_supplier_name_is_unique(api, supplier):
     assert api.post("/api/suppliers/", {"name": "Meat Co"}).status_code == 400
+
+
+def supplier_url(supplier_id):
+    return f"/api/suppliers/{supplier_id}/"
+
+
+def test_create_supplier_without_ingredients_defaults_to_empty(api):
+    response = api.post("/api/suppliers/", {"name": "Veg Co"})
+    assert response.status_code == 201
+    assert response.json()["ingredients"] == []
+
+
+def test_create_supplier_with_ingredients(api, beef, bun):
+    body = {"name": "Veg Co", "contact": "", "ingredients": [beef.id, bun.id]}
+    response = api.post("/api/suppliers/", body, format="json")
+    assert response.status_code == 201
+    assert response.json() == {"id": response.json()["id"], "name": "Veg Co", "contact": "", "ingredients": [beef.id, bun.id]}
+
+
+def test_create_supplier_with_unknown_ingredient_is_400(api):
+    response = api.post("/api/suppliers/", {"name": "Veg Co", "ingredients": [999999]}, format="json")
+    assert response.status_code == 400
+    assert "ingredients" in response.json()
+    assert not Supplier.objects.exists()
+
+
+def test_list_suppliers_shows_ingredient_ids(api, supplier, beef, bun):
+    assert api.get("/api/suppliers/").json()[0]["ingredients"] == [beef.id, bun.id]
+
+
+def test_retrieve_supplier(api, supplier, beef, bun):
+    response = api.get(supplier_url(supplier.id))
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": supplier.id, "name": "Meat Co", "contact": "orders@meatco.test", "ingredients": [beef.id, bun.id],
+    }
+
+
+def test_patch_replaces_ingredient_set(api, supplier, bun, lettuce):
+    response = api.patch(supplier_url(supplier.id), {"ingredients": [lettuce.id]}, format="json")
+    assert response.status_code == 200
+    assert response.json()["ingredients"] == [lettuce.id]
+    assert list(supplier.ingredients.all()) == [lettuce]
+
+
+def test_patch_without_ingredients_keeps_set(api, supplier, beef, bun):
+    response = api.patch(supplier_url(supplier.id), {"contact": "new@meatco.test"}, format="json")
+    assert (response.json()["contact"], response.json()["ingredients"]) == ("new@meatco.test", [beef.id, bun.id])
+
+
+def test_patch_with_unknown_ingredient_is_400_and_keeps_set(api, supplier, beef, bun):
+    response = api.patch(supplier_url(supplier.id), {"ingredients": [999999]}, format="json")
+    assert response.status_code == 400
+    assert set(supplier.ingredients.all()) == {beef, bun}
+
+
+def test_unknown_supplier_is_404(api, db):
+    assert api.get(supplier_url(999999)).status_code == 404
+    assert api.patch(supplier_url(999999), {"name": "X"}, format="json").status_code == 404
+
+
+@pytest.mark.parametrize("method", ["put", "delete"])
+def test_supplier_put_and_delete_not_allowed(api, supplier, method):
+    assert getattr(api, method)(supplier_url(supplier.id)).status_code == 405
 
 
 def test_create_menu_item_with_recipe(api, beef, bun):

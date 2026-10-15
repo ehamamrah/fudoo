@@ -33,8 +33,15 @@ def bun(db):
 
 
 @pytest.fixture
-def supplier(db):
-    return Supplier.objects.create(name="Meat Co", contact="orders@meatco.test")
+def lettuce(db):
+    return Ingredient.objects.create(name="Lettuce", unit="g")
+
+
+@pytest.fixture
+def supplier(beef, bun):
+    supplier = Supplier.objects.create(name="Meat Co", contact="orders@meatco.test")
+    supplier.ingredients.add(beef, bun)
+    return supplier
 
 
 @pytest.fixture

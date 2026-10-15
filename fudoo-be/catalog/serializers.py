@@ -18,9 +18,13 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 
 class SupplierSerializer(serializers.ModelSerializer):
+    ingredients = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Ingredient.objects.all(), required=False
+    )
+
     class Meta:
         model = Supplier
-        fields = ["id", "name", "contact"]
+        fields = ["id", "name", "contact", "ingredients"]
 
 
 class RecipeLineSerializer(serializers.ModelSerializer):

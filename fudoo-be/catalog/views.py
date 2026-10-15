@@ -10,8 +10,14 @@ class IngredientListCreate(generics.ListCreateAPIView):
 
 
 class SupplierListCreate(generics.ListCreateAPIView):
-    queryset = Supplier.objects.all()
+    queryset = Supplier.objects.prefetch_related("ingredients")
     serializer_class = SupplierSerializer
+
+
+class SupplierDetail(generics.RetrieveUpdateAPIView):
+    queryset = Supplier.objects.prefetch_related("ingredients")
+    serializer_class = SupplierSerializer
+    http_method_names = ["get", "patch", "head", "options"]
 
 
 class MenuItemListCreate(generics.ListCreateAPIView):

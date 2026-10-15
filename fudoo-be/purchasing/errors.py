@@ -22,3 +22,9 @@ class OverReceipt(DomainError):
             f"Line {line.id} ({line.ingredient.name}): receiving {quantity:.3f} "
             f"exceeds outstanding {line.quantity_outstanding:.3f}.",
         )
+
+
+class IngredientNotSupplied(DomainError):
+    def __init__(self, supplier, ingredients):
+        names = ", ".join(sorted(ingredient.name for ingredient in ingredients))
+        super().__init__("ingredient_not_supplied", f"{supplier.name} does not supply: {names}.")
