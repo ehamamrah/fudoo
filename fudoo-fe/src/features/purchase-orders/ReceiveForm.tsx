@@ -3,7 +3,7 @@ import type { DeliveryInput, PurchaseOrder, PurchaseOrderLine } from "../../api/
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Field";
 import { FormPanel } from "../../components/FormPanel";
-import { formatQuantity, isPositiveQuantity } from "../../lib/format";
+import { formatQuantity, isEmptyOrZero } from "../../lib/format";
 import { useReceiveDelivery } from "./hooks";
 
 type Quantities = Record<number, string>;
@@ -13,7 +13,7 @@ function outstandingByLine(lines: PurchaseOrderLine[]): Quantities {
 }
 
 function toDelivery(quantities: Quantities): DeliveryInput {
-  const entries = Object.entries(quantities).filter(([, quantity]) => isPositiveQuantity(quantity));
+  const entries = Object.entries(quantities).filter(([, quantity]) => !isEmptyOrZero(quantity));
   return { lines: entries.map(([line, quantity]) => ({ line: Number(line), quantity: quantity.trim() })) };
 }
 

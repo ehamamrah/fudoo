@@ -26,7 +26,11 @@ export function usePurchaseOrders(filter: PurchaseOrderFilter) {
 }
 
 export function usePurchaseOrder(id: number) {
-  return useQuery({ queryKey: purchaseOrderKeys.detail(id), queryFn: () => getPurchaseOrder(id) });
+  return useQuery({
+    queryKey: purchaseOrderKeys.detail(id),
+    queryFn: () => getPurchaseOrder(id),
+    refetchInterval: POLL_INTERVAL_MS,
+  });
 }
 
 export function useCreatePurchaseOrder() {

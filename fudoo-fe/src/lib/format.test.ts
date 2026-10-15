@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatQuantity, isPositiveQuantity, secondsSince } from "./format";
+import { formatQuantity, isEmptyOrZero, secondsSince } from "./format";
 
 describe("formatQuantity", () => {
   it.each([
@@ -21,17 +21,18 @@ describe("secondsSince", () => {
   });
 });
 
-describe("isPositiveQuantity", () => {
+describe("isEmptyOrZero", () => {
   it.each([
-    ["2000", true],
-    ["0.5", true],
-    [" 3 ", true],
-    ["0", false],
-    ["0.000", false],
-    ["", false],
+    ["", true],
+    ["  ", true],
+    ["0", true],
+    ["0.000", true],
+    ["0.", true],
+    ["2000", false],
+    ["0.5", false],
     ["-5", false],
-    ["abc", false],
+    ["-0", false],
   ])("%s -> %s", (input, expected) => {
-    expect(isPositiveQuantity(input)).toBe(expected);
+    expect(isEmptyOrZero(input)).toBe(expected);
   });
 });

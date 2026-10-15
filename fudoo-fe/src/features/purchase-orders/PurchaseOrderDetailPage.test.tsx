@@ -18,6 +18,10 @@ function renderDetail(routes: Routes) {
   return fetchMock;
 }
 
+function detailFetches(fetchMock: ReturnType<typeof mockApi>): number {
+  return fetchMock.mock.calls.filter(([url, init]) => String(url) === DETAIL && !init?.method).length;
+}
+
 function actionButtonLabels(): string[] {
   return ALL_LABELS.filter((label) => screen.queryByRole("button", { name: label }));
 }
@@ -56,6 +60,14 @@ describe("PurchaseOrderDetailPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Cannot close a draft order.");
   });
 
+  it("refetches the order after an action fails with 409", async () => {
+    const error = { status: 409, body: { code: "invalid_transition", detail: "Order was cancelled." } };
+    const fetchMock = renderDetail({ [`GET ${DETAIL}`]: purchaseOrder(), [`POST ${ACTIONS}`]: error });
+    await userEvent.click(await screen.findByRole("button", { name: "Close (short-close)" }));
+    await screen.findByRole("alert");
+    await waitFor(() => expect(detailFetches(fetchMock)).toBe(2));
+  });
+
   it("hides the receive form when the API says it cannot receive", async () => {
     renderDetail({ [`GET ${DETAIL}`]: purchaseOrder({ status: "draft", allowed_actions: ["send", "cancel"], can_receive: false }) });
     await screen.findByText("Meat Co");
@@ -79,6 +91,18 @@ describe("ReceiveForm", () => {
     await userEvent.type(screen.getByLabelText("Receive Beef"), "1500.5");
     await userEvent.click(screen.getByRole("button", { name: "Record delivery" }));
     await waitFor(() => expect(bodiesSentTo(fetchMock, "POST", DELIVERIES)).toEqual([{ lines: [{ line: 11, quantity: "1500.5" }] }]));
+  });
+
+  it("sends negative entries as typed so the API can reject them", async () => {
+    const error = { status: 400, body: { lines: [{ quantity: ["Ensure this value is greater than 0."] }, {}] } };
+    const fetchMock = renderDetail({ [`GET ${DETAIL}`]: purchaseOrder(), [`POST ${DELIVERIES}`]: error });
+    const beef = await screen.findByLabelText("Receive Beef");
+    await userEvent.clear(beef);
+    await userEvent.type(beef, "-5");
+    await userEvent.click(screen.getByRole("button", { name: "Record delivery" }));
+    const expected = { lines: [{ line: 11, quantity: "-5" }, { line: 12, quantity: "60" }] };
+    await waitFor(() => expect(bodiesSentTo(fetchMock, "POST", DELIVERIES)).toEqual([expected]));
+    expect(await screen.findByRole("alert")).toHaveTextContent("lines 1.quantity: Ensure this value is greater than 0.");
   });
 
   it("disables submit when every quantity is empty or zero", async () => {

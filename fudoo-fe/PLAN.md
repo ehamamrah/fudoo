@@ -37,7 +37,7 @@ src/
 
 - `client.ts` maps a 409 body to `ApiError` with code, detail and shortages.
 - PO detail renders exactly the buttons in `allowed_actions`.
-- Receive form prefills outstanding quantities and posts only lines > 0.
+- Receive form prefills outstanding quantities, skips only empty or zero lines and sends every other value as typed.
 - POS form lists shortages on `insufficient_stock`.
 
 ## Run

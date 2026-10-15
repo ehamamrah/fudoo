@@ -7,6 +7,6 @@ export function useInvalidatingMutation<TInput, TResult>(
   const client = useQueryClient();
   return useMutation({
     mutationFn,
-    onSuccess: () => Promise.all(keys.map((queryKey) => client.invalidateQueries({ queryKey }))),
+    onSettled: () => Promise.all(keys.map((queryKey) => client.invalidateQueries({ queryKey }))),
   });
 }
