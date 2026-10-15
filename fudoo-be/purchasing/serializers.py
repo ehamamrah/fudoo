@@ -26,13 +26,17 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
     supplier_name = serializers.CharField(source="supplier.name", read_only=True)
     lines = POLineSerializer(many=True, read_only=True)
     allowed_actions = serializers.SerializerMethodField()
+    can_receive = serializers.SerializerMethodField()
 
     class Meta:
         model = PurchaseOrder
-        fields = ["id", "supplier", "supplier_name", "status", "created_at", "lines", "allowed_actions"]
+        fields = ["id", "supplier", "supplier_name", "status", "created_at", "lines", "allowed_actions", "can_receive"]
 
     def get_allowed_actions(self, order):
         return state_machine.allowed_actions(order.status)
+
+    def get_can_receive(self, order):
+        return state_machine.can_receive(order.status)
 
 
 class POLineInputSerializer(serializers.Serializer):

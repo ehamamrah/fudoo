@@ -12,6 +12,7 @@ export function purchaseOrder(overrides: Partial<PurchaseOrder> = {}): PurchaseO
       { id: 12, ingredient: 2, ingredient_name: "Bun", unit: "pcs", quantity_ordered: "100.000", quantity_received: "40.000", quantity_outstanding: "60.000" },
     ],
     allowed_actions: ["close"],
+    can_receive: true,
     ...overrides,
   };
 }

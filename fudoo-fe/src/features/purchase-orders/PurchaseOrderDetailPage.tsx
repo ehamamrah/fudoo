@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import type { PurchaseOrder, PurchaseOrderStatus } from "../../api/types";
+import type { PurchaseOrder } from "../../api/types";
 import { Page } from "../../components/Page";
 import { QueryState } from "../../components/QueryState";
 import { Cell, Row, Table } from "../../components/Table";
@@ -8,8 +8,6 @@ import { ActionButtons } from "./ActionButtons";
 import { ReceiveForm } from "./ReceiveForm";
 import { StatusBadge } from "./StatusBadge";
 import { usePurchaseOrder } from "./hooks";
-
-const RECEIVABLE: PurchaseOrderStatus[] = ["sent", "received"];
 
 const withUnit = (quantity: string, unit: string) => `${formatQuantity(quantity)} ${unit}`;
 
@@ -42,7 +40,7 @@ function OrderDetail({ order }: { order: PurchaseOrder }) {
       </div>
       <ActionButtons order={order} />
       <LinesTable order={order} />
-      {RECEIVABLE.includes(order.status) && <ReceiveForm key={receiveFormKey(order)} order={order} />}
+      {order.can_receive && <ReceiveForm key={receiveFormKey(order)} order={order} />}
     </div>
   );
 }

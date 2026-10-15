@@ -56,8 +56,8 @@ describe("PurchaseOrderDetailPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Cannot close a draft order.");
   });
 
-  it("hides the receive form for draft orders", async () => {
-    renderDetail({ [`GET ${DETAIL}`]: purchaseOrder({ status: "draft", allowed_actions: ["send", "cancel"] }) });
+  it("hides the receive form when the API says it cannot receive", async () => {
+    renderDetail({ [`GET ${DETAIL}`]: purchaseOrder({ status: "draft", allowed_actions: ["send", "cancel"], can_receive: false }) });
     await screen.findByText("Meat Co");
     expect(screen.queryByRole("button", { name: "Record delivery" })).not.toBeInTheDocument();
   });

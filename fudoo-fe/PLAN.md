@@ -8,7 +8,7 @@ Vite + React 18 + TypeScript (strict) + Tailwind + TanStack Query + React Router
 src/
   api/         client.ts (fetch wrapper → typed ApiError), types.ts (mirrors contract), one file per resource
   components/  Button, Field, Table, ErrorBanner, Badge, Page, FormPanel, QueryState, UpdatedAgo
-  lib/         quantity display/compare on strings (BigInt thousandths, never float), shared hooks
+  lib/         display formatting, shared hooks
   features/    stock, ingredients, suppliers, menu-items, purchase-orders, sales — each: hooks.ts + page(s)
   App.tsx      router + nav
 ```
@@ -20,8 +20,8 @@ src/
 ## Decisions taken during the build
 
 - Tailwind v3 with PostCSS. Status: all six steps done.
-- PO receive form is shown only for `sent` / `received` (the contract's receivable statuses); `allowed_actions` covers manual actions only.
-- "Low" stock has no contract field. Displayed as: on_hand is below the per-portion recipe quantity of at least one menu item (exact decimal compare). Replace with a backend `reorder_level` if the contract adds one.
+- PO receive form is shown from the API's `can_receive` flag; action buttons from `allowed_actions`. The UI holds no state-machine knowledge.
+- Stock shows Out of stock / In stock only. A "low" threshold needs a backend `reorder_level`; deferred (YAGNI).
 - POS keeps one `external_id` per attempt and regenerates it only after a successful sale, so a resubmit after a network failure stays idempotent.
 
 ## Build order (one commit + push per step)
@@ -31,7 +31,7 @@ src/
 3. **Menu items:** list with recipes + create with dynamic recipe lines.
 4. **Purchase orders:** list (all/open), create with dynamic lines, detail with action buttons and receive form.
 5. **POS simulator:** sale form with generated `external_id`, insufficient-stock display, recent sales.
-6. **Stock dashboard (home):** on_hand per ingredient, zero/low highlighted, freshness indicator.
+6. **Stock dashboard (home):** on_hand per ingredient, out-of-stock highlighted, freshness indicator.
 
 ## Key tests (Vitest + Testing Library, fetch mocked)
 

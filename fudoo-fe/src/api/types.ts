@@ -65,6 +65,7 @@ export interface PurchaseOrder {
   created_at: string;
   lines: PurchaseOrderLine[];
   allowed_actions: PurchaseOrderAction[];
+  can_receive: boolean;
 }
 
 export interface PurchaseOrderInput {

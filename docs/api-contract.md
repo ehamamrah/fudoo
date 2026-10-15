@@ -77,11 +77,13 @@ Quantities are decimal strings with up to 3 decimal places, e.g. `"150.000"`. Re
       "quantity_outstanding": "2000.000"
     }
   ],
-  "allowed_actions": ["close"]
+  "allowed_actions": ["close"],
+  "can_receive": true
 }
 ```
 - `lines` non-empty, quantity_ordered > 0, an ingredient appears at most once.
 - `allowed_actions` lists the manual actions valid from the current status. The UI renders buttons from it.
+- `can_receive` is true when a delivery may be recorded (`sent` or `received`). The UI shows the receive form from it.
 
 ### Manual transition
 

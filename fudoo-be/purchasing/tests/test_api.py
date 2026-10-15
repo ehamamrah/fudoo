@@ -14,7 +14,9 @@ def test_create_purchase_order_in_draft(api, supplier, beef):
     response = api.post("/api/purchase-orders/", body)
     assert response.status_code == 201
     data = response.json()
-    assert (data["status"], data["supplier_name"], data["allowed_actions"]) == ("draft", "Meat Co", ["send", "cancel"])
+    assert (data["status"], data["supplier_name"], data["allowed_actions"], data["can_receive"]) == (
+        "draft", "Meat Co", ["send", "cancel"], False
+    )
     line = data["lines"][0]
     assert line == {
         "id": line["id"], "ingredient": beef.id, "ingredient_name": "Beef", "unit": "g",
@@ -76,7 +78,7 @@ def test_receive_partial_delivery(api, sent_order, lines):
     response = api.post(url(sent_order, "deliveries/"), body)
     assert response.status_code == 201
     data = response.json()
-    assert (data["status"], data["allowed_actions"]) == ("received", ["close"])
+    assert (data["status"], data["allowed_actions"], data["can_receive"]) == ("received", ["close"], True)
     beef_line = next(line for line in data["lines"] if line["id"] == lines["Beef"].id)
     assert (beef_line["quantity_received"], beef_line["quantity_outstanding"]) == ("3000.000", "2000.000")
 
