@@ -46,3 +46,12 @@ Running log of how AI was used, the main prompts, and where it got things wrong.
 - Root `PLAN.md` kept to one page (a brief requirement) and limited to the product plan. Prompt history lives here instead.
 - `fudoo-be/PLAN.md` and `fudoo-fe/PLAN.md` are implementation plans: modules, build order (one commit per step), key tests.
 - The PLAN.md draft takes clear positions: a pilot date of 10 Dec 2026 that depends on POS sandbox access; "trust in the stock number" as the product thesis; count variance as the main signal.
+
+### Prompt 4 — plan corrections
+
+> Make the engineer split 2 not 3. What did the document say about branches? I believe it's one branch for now.
+
+**AI response:**
+
+- Pointed out that the brief fixes the squad at three engineers. Human clarified: 3 engineers in 2 workstreams (Backend: 2, Frontend: 1). The two backend engineers review each other's stock code.
+- Branches: the brief's build is one branch, but the plan is for "many restaurants". The draft had wrongly made branches the tenant. Corrected: restaurants are tenants with one branch each; multi-branch and stock transfers moved to the cut list.

@@ -1,12 +1,12 @@
 # Fudoo — Product Plan
 
-From a one-branch prototype to a product for many restaurants. Squad: 3 engineers (E1 backend, E2 backend/integrations, E3 frontend) and 1 PM.
+From a one-branch prototype to a product for many restaurants. Squad: 3 engineers in 2 workstreams (Backend: E1, E2 · Frontend: E3) and 1 PM.
 
 ## 1. Breakdown
 
 | Epic | Scope |
 |---|---|
-| **E1 Tenancy** | Organizations, branches, users, roles (owner, manager, staff); every record scoped to a branch |
+| **E1 Tenancy** | Restaurants as tenants (one branch each), users, roles (owner, manager); every record scoped to a restaurant |
 | **E2 Catalog** | Ingredients, units and conversions (kg ↔ g, case of 24), suppliers, recipes |
 | **E3 Purchasing** | PO lifecycle, partial receiving, short-close, supplier price per ingredient |
 | **E4 POS integration** | One POS vendor via webhook, menu-item mapping, idempotent ingestion, failed-event queue |
@@ -14,14 +14,14 @@ From a one-branch prototype to a product for many restaurants. Squad: 3 engineer
 
 Sample stories, ready to pick up:
 
-- **E4-1 Ingest POS sale webhook.** *As an owner, I want sales from my POS to reduce stock automatically.* AC: signed webhook verified; `(branch, pos_event_id)` unique so retries never deduct twice; unmapped menu item → event parked in a "needs mapping" queue, not dropped; p95 < 300 ms. Tests: replay the same event 3×, out-of-order events, unknown item.
+- **E4-1 Ingest POS sale webhook.** *As an owner, I want sales from my POS to reduce stock automatically.* AC: signed webhook verified; `(restaurant, pos_event_id)` unique so retries never deduct twice; unmapped menu item → event parked in a "needs mapping" queue, not dropped; p95 < 300 ms. Tests: replay the same event 3×, out-of-order events, unknown item.
 - **E5-1 Stock count.** *As a manager, I want to enter what I physically counted so the system matches the shelf.* AC: count per ingredient creates an `adjustment` movement for the difference; variance report by ingredient and value; counts are immutable once submitted.
 - **E3-4 Short-close a PO.** *As a manager, I want to close an order the supplier will never complete.* AC: only from `received`; reason required; outstanding quantity shown as "not delivered" on the supplier report.
 
 ## 2. First release
 
 **In:** tenancy (single role: manager), catalog without unit conversions, purchasing, one POS integration, stock counts, low-stock alert by email.
-**Cut:** multi-POS, supplier portal, auto-reorder, cost/margin reporting, mobile app. They are valuable, but none of them makes the stock number more trustworthy, and trust is the whole product.
+**Cut:** multi-branch restaurants and stock transfers, multi-POS, supplier portal, auto-reorder, cost/margin reporting, mobile app. They are valuable, but none of them makes the stock number more trustworthy, and trust is the whole product.
 
 **Committed date: Thursday 10 December 2026** (8 weeks from Monday 19 Oct), as a pilot with 3 restaurants. It depends on: POS vendor sandbox access by end of week 2; pilot restaurants giving us recipes and a full opening stock count; no change of POS vendor during the pilot. If the POS sandbox slips, the date slips with it. I'd rather say that now than cut testing later.
 
@@ -37,7 +37,7 @@ Sample stories, ready to pick up:
 
 ## 4. How the squad works
 
-- **Split by module, not by layer:** E1 owns purchasing and stock, E2 owns POS ingestion and tenancy, E3 owns the whole manager UI. Each owns the module end to end, including its tests and on-call.
+- **Two workstreams:** Backend (E1 owns purchasing and stock, E2 owns POS ingestion and tenancy) and Frontend (E3 owns the whole manager UI). Within a stream, each engineer owns their modules end to end, including tests and on-call. The two backend engineers review each other, so stock code always gets a second pair of eyes.
 - **Contract first:** API changes start as a contract PR that the consumer approves before any code.
 - **AI tools:** everyone uses Claude Code with a shared `AGENTS.md` (conventions, invariants, the "never do" list) and shared subagents for review and test generation. The author must be able to explain every line. "The AI wrote it" is not an answer in review.
 - **Quality bar:** one reviewer on every PR, two for anything that touches stock or money. CI runs tests, types, lint and migration checks.
