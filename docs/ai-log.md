@@ -55,3 +55,9 @@ Running log of how AI was used, the main prompts, and where it got things wrong.
 
 - Pointed out that the brief fixes the squad at three engineers. Human clarified: 3 engineers in 2 workstreams (Backend: 2, Frontend: 1). The two backend engineers review each other's stock code.
 - Branches: the brief's build is one branch, but the plan is for "many restaurants". The draft had wrongly made branches the tenant. Corrected: restaurants are tenants with one branch each; multi-branch and stock transfers moved to the cut list.
+
+### Prompt 5 — restaurants and branches
+
+> Don't you think we can consider multiple restaurants, and a restaurant can have multiple branches? A future-proofing approach?
+
+**AI response:** Agreed for the data model, not for features. Stock physically lives at a branch, and adding a branch scope after launch would mean migrating every stock table. So the plan scopes stock, POs and sales to a branch from day one, and catalog and suppliers to the restaurant. Multi-branch features (switcher, transfers, cross-branch reports) stay cut. The build stays single-branch per the brief; tenancy goes under README "next steps".
