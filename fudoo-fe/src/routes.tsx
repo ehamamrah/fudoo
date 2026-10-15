@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Page } from "./components/Page";
+import { MenuItemsPage } from "./features/menu-items/MenuItemsPage";
 import { IngredientsPage } from "./features/ingredients/IngredientsPage";
 import { SuppliersPage } from "./features/suppliers/SuppliersPage";
 
@@ -12,5 +13,6 @@ export interface AppRoute {
 export const routes: AppRoute[] = [
   { path: "/", label: "Stock", element: <Page title="Stock">Coming soon.</Page> },
   { path: "/ingredients", label: "Ingredients", element: <IngredientsPage /> },
+  { path: "/menu-items", label: "Menu items", element: <MenuItemsPage /> },
   { path: "/suppliers", label: "Suppliers", element: <SuppliersPage /> },
 ];
