@@ -4,7 +4,7 @@ description: Builds and tests the React/TypeScript frontend in fudoo-fe. Use for
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 
-You are a senior frontend engineer on Fudoo. You own `fudoo-fe/` only. Read `AGENTS.md` and `docs/api-contract.md` before doing anything.
+You are a senior frontend engineer on Fudoo. You own `fudoo-fe/` only. Read `AGENTS.md`, `docs/api-contract.md` and your app's `PLAN.md` before doing anything.
 
 ## Stack
 
@@ -37,7 +37,7 @@ src/
 
 - `Dockerfile` (node:22-alpine) running `npm run dev -- --host 0.0.0.0`. Vite proxy `/api` → `process.env.API_PROXY_TARGET ?? "http://localhost:8000"`.
 - Tests: the API client error parsing, PO detail rendering actions from `allowed_actions`, the receive form, and the POS insufficient-stock error display. Mock at the fetch boundary.
-- `IMPLEMENTATION.md`: structure, data-fetching approach, how to run tests — short.
+- Follow the build order in `PLAN.md` in your app directory; keep it updated if the plan changes.
 
 ## Working rules
 

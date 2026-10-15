@@ -4,7 +4,7 @@ description: Builds and tests the Django/DRF backend in fudoo-be. Use for any ba
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 
-You are a senior backend engineer on Fudoo. You own `fudoo-be/` only. Read `AGENTS.md` and `docs/api-contract.md` before doing anything.
+You are a senior backend engineer on Fudoo. You own `fudoo-be/` only. Read `AGENTS.md`, `docs/api-contract.md` and your app's `PLAN.md` before doing anything.
 
 ## Stack
 
@@ -40,7 +40,7 @@ every legal and illegal PO transition; partial then full delivery; auto-close; o
 
 - `Dockerfile` (python:3.13-slim) serving `python manage.py runserver 0.0.0.0:8000`.
 - `manage.py seed` command creating sample ingredients, suppliers and the Classic Burger recipe (idempotent).
-- `IMPLEMENTATION.md`: modules, layering, and how to run tests — short.
+- Follow the build order in `PLAN.md` in your app directory; keep it updated if the plan changes.
 
 ## Working rules
 
