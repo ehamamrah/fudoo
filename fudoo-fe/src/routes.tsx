@@ -4,6 +4,7 @@ import { IngredientsPage } from "./features/ingredients/IngredientsPage";
 import { MenuItemsPage } from "./features/menu-items/MenuItemsPage";
 import { PurchaseOrderDetailPage } from "./features/purchase-orders/PurchaseOrderDetailPage";
 import { PurchaseOrdersPage } from "./features/purchase-orders/PurchaseOrdersPage";
+import { PosPage } from "./features/sales/PosPage";
 import { SuppliersPage } from "./features/suppliers/SuppliersPage";
 
 export interface AppRoute {
@@ -19,4 +20,5 @@ export const routes: AppRoute[] = [
   { path: "/menu-items", label: "Menu items", element: <MenuItemsPage /> },
   { path: "/purchase-orders", label: "Purchase orders", element: <PurchaseOrdersPage /> },
   { path: "/purchase-orders/:id", element: <PurchaseOrderDetailPage /> },
+  { path: "/pos", label: "POS", element: <PosPage /> },
 ];
