@@ -71,3 +71,6 @@ export const get = <T>(path: string) => request<T>(path);
 
 export const post = <T>(path: string, payload: unknown) =>
   request<T>(path, { method: "POST", body: JSON.stringify(payload) });
+
+export const patch = <T>(path: string, payload: unknown) =>
+  request<T>(path, { method: "PATCH", body: JSON.stringify(payload) });

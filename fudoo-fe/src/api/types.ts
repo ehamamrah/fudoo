@@ -18,11 +18,13 @@ export interface Supplier {
   id: number;
   name: string;
   contact: string;
+  ingredients: number[];
 }
 
 export interface SupplierInput {
   name: string;
   contact: string;
+  ingredients: number[];
 }
 
 export interface RecipeLine {
