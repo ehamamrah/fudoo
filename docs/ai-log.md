@@ -61,3 +61,28 @@ Running log of how AI was used, the main prompts, and where it got things wrong.
 > Don't you think we can consider multiple restaurants, and a restaurant can have multiple branches? A future-proofing approach?
 
 **AI response:** Agreed for the data model, not for features. Stock physically lives at a branch, and adding a branch scope after launch would mean migrating every stock table. So the plan scopes stock, POs and sales to a branch from day one, and catalog and suppliers to the restaurant. Multi-branch features (switcher, transfers, cross-branch reports) stay cut. The build stays single-branch per the brief; tenancy goes under README "next steps".
+
+## Session 2 — Parallel build
+
+### Prompt 6 — go
+
+> Go ahead.
+
+Two agents built `fudoo-be` and `fudoo-fe` in parallel against `docs/api-contract.md`, one commit per module.
+
+**Where the setup itself failed:**
+
+- Project subagents in `.claude/agents/` load only at session start, so calling them by name in the same session failed. Workaround: general-purpose agents told to adopt the definition files as their role.
+- Both agents shared one working tree. The frontend agent's staged files were emptied by the backend agent's git activity, `git pull --rebase` refused to run because of the other agent's uncommitted files, and the agents overwrote each other's helper script in the shared scratch folder. Lesson: give each agent its own git worktree.
+
+**Where the agents' first attempts were wrong (self-reported and fixed by them):**
+
+- Backend: a test fixture set PO status by writing the field directly, bypassing the state machine. It was rewritten to drive orders through the real services.
+- Backend: the concurrency test was checked by removing `select_for_update`. The race test then failed, which proves it tests something real.
+- Frontend: four form components broke the 15-line rule. A shared `FormPanel` and small hooks were extracted.
+- Frontend: the fetch mock treated any object with a `status` key as an HTTP response, which collided with `PurchaseOrder.status` and failed 12 tests.
+
+**Caught in orchestrator review (not by the agents):**
+
+- The frontend decided whether a PO could take a delivery from a hardcoded `["sent", "received"]` list, duplicating the state machine. The backend already had `can_receive`; it is now part of the API, and the UI uses it.
+- The frontend invented a "low stock" rule from recipe quantities, a business rule in the UI that the brief didn't ask for. Removed, along with a BigInt decimal library that existed only to support it (YAGNI).
