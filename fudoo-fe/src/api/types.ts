@@ -2,11 +2,49 @@ export type Quantity = string;
 export type Unit = "g" | "ml" | "pcs";
 export const UNITS: Unit[] = ["g", "ml", "pcs"];
 
+export interface Page<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+export interface CursorPage<T> {
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+export interface Option {
+  id: number;
+  name: string;
+}
+
+export interface IngredientOption extends Option {
+  unit: Unit;
+}
+
+export interface CatalogParams {
+  page: number;
+  search: string;
+}
+
+export interface IngredientParams extends CatalogParams {
+  outOfStock: boolean;
+}
+
+export interface IngredientSummary {
+  total: number;
+  in_stock: number;
+  out_of_stock: number;
+}
+
 export interface Ingredient {
   id: number;
   name: string;
   unit: Unit;
   on_hand: Quantity;
+  out_of_stock: boolean;
 }
 
 export interface IngredientInput {
@@ -19,6 +57,7 @@ export interface Supplier {
   name: string;
   contact: string;
   ingredients: number[];
+  supplies: Option[];
 }
 
 export interface SupplierInput {

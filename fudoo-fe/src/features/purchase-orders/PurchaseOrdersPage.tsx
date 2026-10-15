@@ -1,17 +1,19 @@
-import { memo, useState } from "react";
+import { memo } from "react";
 import type { PurchaseOrder, PurchaseOrderFilter } from "../../api/types";
 import { Button } from "../../components/Button";
+import { ListToolbar } from "../../components/ListToolbar";
 import { Page } from "../../components/Page";
+import { CursorResults } from "../../components/PagedResults";
 import { QueryState } from "../../components/QueryState";
 import { Cell, Row, Table } from "../../components/Table";
 import { TextLink } from "../../components/TextLink";
 import { UpdatedAgo } from "../../components/UpdatedAgo";
 import { formatDateTime } from "../../lib/format";
-import { useIngredients } from "../ingredients/hooks";
-import { useSuppliers } from "../suppliers/hooks";
+import { useCursorParams } from "../../lib/useListParams";
+import { useSupplierOptions } from "../suppliers/hooks";
 import { PurchaseOrderForm } from "./PurchaseOrderForm";
 import { StatusBadge } from "./StatusBadge";
-import { usePurchaseOrders } from "./hooks";
+import { usePurchaseOrderPage } from "./hooks";
 
 const FILTERS: { value: PurchaseOrderFilter; label: string }[] = [
   { value: "all", label: "All" },
@@ -50,31 +52,23 @@ const OrderTable = memo(function OrderTable({ orders }: { orders: PurchaseOrder[
 });
 
 function OrderList() {
-  const [filter, setFilter] = useState<PurchaseOrderFilter>("all");
-  const orders = usePurchaseOrders(filter);
+  const list = useCursorParams();
+  const filter: PurchaseOrderFilter = list.params.get("status") === "open" ? "open" : "all";
+  const orders = usePurchaseOrderPage(filter, list.cursor);
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <FilterBar value={filter} onChange={setFilter} />
+      <ListToolbar>
+        <FilterBar value={filter} onChange={(value) => list.setFilter("status", value === "open" ? "open" : null)} />
         {filter === "open" && <UpdatedAgo updatedAt={orders.dataUpdatedAt} />}
-      </div>
-      <QueryState query={orders}>{(data) => <OrderTable orders={data} />}</QueryState>
+      </ListToolbar>
+      <CursorResults query={orders} list={list}>{(rows) => <OrderTable orders={rows} />}</CursorResults>
     </div>
   );
 }
 
 function NewOrder() {
-  const suppliers = useSuppliers();
-  const ingredients = useIngredients();
-  return (
-    <QueryState query={suppliers}>
-      {(supplierList) => (
-        <QueryState query={ingredients}>
-          {(ingredientList) => <PurchaseOrderForm suppliers={supplierList} ingredients={ingredientList} />}
-        </QueryState>
-      )}
-    </QueryState>
-  );
+  const suppliers = useSupplierOptions();
+  return <QueryState query={suppliers}>{(data) => <PurchaseOrderForm suppliers={data} />}</QueryState>;
 }
 
 export function PurchaseOrdersPage() {

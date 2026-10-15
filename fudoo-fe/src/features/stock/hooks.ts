@@ -1,7 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import type { IngredientParams } from "../../api/types";
 import { POLL_INTERVAL_MS } from "../../queryClient";
-import { ingredientsQuery } from "../ingredients/hooks";
+import { useIngredientPage, useIngredientSummary } from "../ingredients/hooks";
 
-export function useStock() {
-  return useQuery({ ...ingredientsQuery, refetchInterval: POLL_INTERVAL_MS });
-}
+export const useStockPage = (params: IngredientParams) => useIngredientPage(params, POLL_INTERVAL_MS);
+export const useStockSummary = () => useIngredientSummary(POLL_INTERVAL_MS);

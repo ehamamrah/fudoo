@@ -1,17 +1,17 @@
-import type { Ingredient } from "../../api/types";
+import type { IngredientOption } from "../../api/types";
 import { Button } from "../../components/Button";
 import { Field, Input, Select } from "../../components/Field";
 import type { LineDraft, LineField, useLineDrafts } from "./useLineDrafts";
 
 interface IngredientLinesProps {
   drafts: ReturnType<typeof useLineDrafts>;
-  ingredients: Ingredient[];
+  ingredients: IngredientOption[];
 }
 
 interface LineProps {
   line: LineDraft;
   position: number;
-  ingredients: Ingredient[];
+  ingredients: IngredientOption[];
   onChange: (field: LineField, value: string) => void;
   onRemove?: () => void;
 }

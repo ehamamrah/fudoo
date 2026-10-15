@@ -19,6 +19,12 @@ class Sequence {
   }
 }
 
+export function deferred() {
+  let resolve: (entry: unknown) => void = () => undefined;
+  const promise = new Promise<unknown>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
 export const inSequence = (...entries: unknown[]) => new Sequence(entries);
 
 const isMockResponse = (value: unknown): value is MockResponse =>
@@ -38,6 +44,7 @@ function respond(routes: Routes, key: string): Promise<Response> {
   const route = routes[key];
   const entry = route instanceof Sequence ? route.next() : route;
   if (entry === networkError) return Promise.reject(new TypeError("Failed to fetch"));
+  if (entry instanceof Promise) return entry.then(toResponse);
   return Promise.resolve(toResponse(entry));
 }
 

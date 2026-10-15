@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Ingredient, MenuItemInput } from "../../api/types";
+import type { IngredientOption, MenuItemInput } from "../../api/types";
 import { Button } from "../../components/Button";
 import { Field, Input } from "../../components/Field";
 import { FormPanel } from "../../components/FormPanel";
@@ -20,7 +20,7 @@ function useMenuItemForm() {
   return { name, setName, drafts, create, submit };
 }
 
-export function MenuItemForm({ ingredients }: { ingredients: Ingredient[] }) {
+export function MenuItemForm({ ingredients }: { ingredients: IngredientOption[] }) {
   const { name, setName, drafts, create, submit } = useMenuItemForm();
   return (
     <FormPanel title="New menu item" error={create.error} onSubmit={submit}>

@@ -1,5 +1,6 @@
-import { get, post } from "./client";
+import { get, post, withQuery } from "./client";
 import type {
+  CursorPage,
   DeliveryInput,
   PurchaseOrder,
   PurchaseOrderAction,
@@ -9,8 +10,8 @@ import type {
 
 const base = "/purchase-orders/";
 
-export const listPurchaseOrders = (filter: PurchaseOrderFilter) =>
-  get<PurchaseOrder[]>(filter === "open" ? `${base}?status=open` : base);
+export const listPurchaseOrders = (filter: PurchaseOrderFilter, cursor: string | null) =>
+  get<CursorPage<PurchaseOrder>>(withQuery(base, { status: filter === "open" ? "open" : null, cursor }));
 
 export const getPurchaseOrder = (id: number) => get<PurchaseOrder>(`${base}${id}/`);
 

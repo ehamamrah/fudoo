@@ -74,3 +74,18 @@ export const post = <T>(path: string, payload: unknown) =>
 
 export const patch = <T>(path: string, payload: unknown) =>
   request<T>(path, { method: "PATCH", body: JSON.stringify(payload) });
+
+type QueryValue = string | number | null | undefined;
+
+export function withQuery(path: string, query: Record<string, QueryValue>): string {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== "") params.set(key, String(value));
+  });
+  const search = params.toString();
+  return search ? `${path}?${search}` : path;
+}
+
+export function cursorOf(link: string | null): string | null {
+  return link === null ? null : new URLSearchParams(link.split("?")[1] ?? "").get("cursor");
+}

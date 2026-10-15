@@ -1,11 +1,14 @@
 import type { MenuItem, RecipeLine } from "../../api/types";
 import { Page } from "../../components/Page";
+import { PageNumberResults } from "../../components/PagedResults";
 import { QueryState } from "../../components/QueryState";
+import { SearchInput } from "../../components/SearchInput";
 import { Cell, Row, Table } from "../../components/Table";
-import { formatQuantity } from "../../lib/format";
-import { useIngredients } from "../ingredients/hooks";
+import { formatQuantity, noMatchesText } from "../../lib/format";
+import { usePageNumberParams } from "../../lib/useListParams";
+import { useIngredientOptions } from "../ingredients/hooks";
 import { MenuItemForm } from "./MenuItemForm";
-import { useMenuItems } from "./hooks";
+import { useMenuItemPage } from "./hooks";
 
 function Recipe({ recipe }: { recipe: RecipeLine[] }) {
   return (
@@ -17,9 +20,9 @@ function Recipe({ recipe }: { recipe: RecipeLine[] }) {
   );
 }
 
-function MenuItemTable({ items }: { items: MenuItem[] }) {
+function MenuItemTable({ items, emptyText }: { items: MenuItem[]; emptyText?: string }) {
   return (
-    <Table headers={["Name", "Recipe"]} empty={items.length === 0}>
+    <Table headers={["Name", "Recipe"]} empty={items.length === 0} emptyText={emptyText}>
       {items.map((item) => (
         <Row key={item.id}>
           <Cell>{item.name}</Cell>
@@ -30,13 +33,21 @@ function MenuItemTable({ items }: { items: MenuItem[] }) {
   );
 }
 
+function NewMenuItem() {
+  const ingredients = useIngredientOptions();
+  return <QueryState query={ingredients}>{(data) => <MenuItemForm ingredients={data} />}</QueryState>;
+}
+
 export function MenuItemsPage() {
-  const menuItems = useMenuItems();
-  const ingredients = useIngredients();
+  const list = usePageNumberParams();
+  const menuItems = useMenuItemPage({ page: list.page, search: list.search });
   return (
     <Page title="Menu items" description="Dishes and the recipe each one uses from stock.">
-      <QueryState query={ingredients}>{(data) => <MenuItemForm ingredients={data} />}</QueryState>
-      <QueryState query={menuItems}>{(data) => <MenuItemTable items={data} />}</QueryState>
+      <NewMenuItem />
+      <SearchInput label="Search menu items" value={list.search} onSearch={list.setSearch} />
+      <PageNumberResults query={menuItems} list={list}>
+        {(rows) => <MenuItemTable items={rows} emptyText={noMatchesText(list.search)} />}
+      </PageNumberResults>
     </Page>
   );
 }

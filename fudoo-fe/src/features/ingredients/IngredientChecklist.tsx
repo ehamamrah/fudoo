@@ -1,8 +1,8 @@
-import type { Ingredient } from "../../api/types";
+import type { Option } from "../../api/types";
 
 interface IngredientChecklistProps {
   label: string;
-  ingredients: Ingredient[];
+  ingredients: Option[];
   selected: number[];
   onChange: (selected: number[]) => void;
 }

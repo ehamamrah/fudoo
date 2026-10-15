@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ApiError, get, post } from "./client";
+import { ApiError, cursorOf, get, post, withQuery } from "./client";
 import { mockApi } from "../test/mockApi";
 
 async function caught(promise: Promise<unknown>): Promise<ApiError> {
@@ -62,5 +62,21 @@ describe("api client", () => {
   it("falls back to a status message for empty error bodies", async () => {
     mockApi({ "GET /api/sales/": { status: 502 } });
     expect((await caught(get("/sales/"))).detail).toBe("Request failed with status 502");
+  });
+});
+
+describe("pagination helpers", () => {
+  it("builds query strings without empty values", () => {
+    expect(withQuery("/ingredients/", { page: 2, search: "", stock: undefined, supplier: null })).toBe("/ingredients/?page=2");
+    expect(withQuery("/ingredients/options/", {})).toBe("/ingredients/options/");
+  });
+
+  it.each([
+    ["/api/sales/?cursor=cD0y", "cD0y"],
+    ["/api/purchase-orders/?cursor=x%3D&status=open", "x="],
+    ["/api/sales/", null],
+    [null, null],
+  ])("reads the cursor token from %s", (link, token) => {
+    expect(cursorOf(link)).toBe(token);
   });
 });

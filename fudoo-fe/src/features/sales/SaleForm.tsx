@@ -1,4 +1,4 @@
-import type { MenuItem, Sale } from "../../api/types";
+import type { Option, Sale } from "../../api/types";
 import { Button } from "../../components/Button";
 import { Field, Input, Select } from "../../components/Field";
 import { FormPanel } from "../../components/FormPanel";
@@ -15,7 +15,7 @@ function useSaleForm() {
   return { values, setField, externalId: attempt.id, create, submit };
 }
 
-function MenuItemSelect({ items, value, onChange }: { items: MenuItem[]; value: string; onChange: (id: string) => void }) {
+function MenuItemSelect({ items, value, onChange }: { items: Option[]; value: string; onChange: (id: string) => void }) {
   return (
     <Select required value={value} onChange={(event) => onChange(event.target.value)}>
       <option value="">Choose…</option>
@@ -32,7 +32,7 @@ function SaleResult({ sale }: { sale: Sale }) {
   );
 }
 
-export function SaleForm({ items }: { items: MenuItem[] }) {
+export function SaleForm({ items }: { items: Option[] }) {
   const { values, setField, externalId, create, submit } = useSaleForm();
   return (
     <FormPanel title="Ring up a sale" error={create.error} onSubmit={submit}>

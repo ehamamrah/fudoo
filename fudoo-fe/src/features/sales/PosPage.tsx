@@ -1,11 +1,13 @@
 import type { Sale } from "../../api/types";
 import { Page, Panel } from "../../components/Page";
+import { CursorResults } from "../../components/PagedResults";
 import { QueryState } from "../../components/QueryState";
 import { Cell, Row, Table } from "../../components/Table";
 import { formatDateTime } from "../../lib/format";
-import { useMenuItems } from "../menu-items/hooks";
+import { useCursorParams } from "../../lib/useListParams";
+import { useMenuItemOptions } from "../menu-items/hooks";
 import { SaleForm } from "./SaleForm";
-import { useSales } from "./hooks";
+import { useSalePage } from "./hooks";
 
 function SalesTable({ sales }: { sales: Sale[] }) {
   return (
@@ -22,15 +24,22 @@ function SalesTable({ sales }: { sales: Sale[] }) {
   );
 }
 
+function RecentSales() {
+  const list = useCursorParams();
+  const sales = useSalePage(list.cursor);
+  return (
+    <Panel title="Recent sales">
+      <CursorResults query={sales} list={list}>{(rows) => <SalesTable sales={rows} />}</CursorResults>
+    </Panel>
+  );
+}
+
 export function PosPage() {
-  const menuItems = useMenuItems();
-  const sales = useSales();
+  const menuItems = useMenuItemOptions();
   return (
     <Page title="POS simulator" description="Record sales the way the point of sale would. Each sale deducts its recipe from stock.">
       <QueryState query={menuItems}>{(items) => <SaleForm items={items} />}</QueryState>
-      <Panel title="Recent sales">
-        <QueryState query={sales}>{(data) => <SalesTable sales={data} />}</QueryState>
-      </Panel>
+      <RecentSales />
     </Page>
   );
 }
