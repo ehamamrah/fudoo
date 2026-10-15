@@ -19,6 +19,9 @@ class Ingredient(models.Model):
         ordering = ["name"]
         constraints = [
             models.UniqueConstraint(Lower("name"), name="ingredient_name_ci_unique"),
+            models.CheckConstraint(
+                condition=models.Q(on_hand__gte=0), name="ingredient_on_hand_non_negative"
+            ),
         ]
 
     def __str__(self):
