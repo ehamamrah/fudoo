@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fudoo
+      POSTGRES_USER: fudoo
+      POSTGRES_PASSWORD: fudoo
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fudoo -d fudoo"]
+      interval: 2s
+      retries: 15
+
+  be:
+    build: ./fudoo-be
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    environment:
+      DATABASE_URL: postgres://fudoo:fudoo@db:5432/fudoo
+      DJANGO_DEBUG: "1"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./fudoo-be:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+  fe:
+    build: ./fudoo-fe
+    environment:
+      API_PROXY_TARGET: http://be:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./fudoo-fe:/app
+      - /app/node_modules
+    depends_on:
+      - be
+
+volumes:
+  pgdata:
