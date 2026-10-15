@@ -147,3 +147,29 @@ The orchestrator checked the registries before planning. Postgres 18 is the late
 - `check --deploy` had failed all along (no SecurityMiddleware, insecure defaults). Settings now fail fast without a secret key or an explicit host list when debug is off.
 
 **Verification:** each race test was checked by removing its guard (the `IntegrityError` fallback, the lock order, the unique constraint) and watching the test fail. Then a full-stack end-to-end run went through the Vite proxy: PO created once, delivery applied once, a changed payload got 409.
+
+### Prompt 11 — caching and background jobs
+
+> Do we need caching, or scheduled/delayed jobs with Celery?
+
+The AI recommended neither for now, with clear triggers for each:
+
+- **Caching:** a server-side cache on stock fights the product's promise that the number can be trusted. The cheap caches are already there: `on_hand` is a running total, and the browser keeps query results.
+- **Background jobs:** every current flow must be synchronous and in one transaction. The roadmap items that do need them (POS webhook inbox, low-stock emails, nightly reconciliation) should start on Django's built-in tasks with a database-backed queue, so jobs are saved in the same transaction as the data, before reaching for Celery.
+
+### Prompt 12 — pagination everywhere
+
+> Paginate every listing page and avoid overloading the backend and frontend.
+
+The contract was changed first, with one pagination style per growth pattern:
+
+- **Cursor** for purchase orders and sales: they grow without limit, there's no `COUNT(*)`, and pages stay stable while polling.
+- **Page numbers + search** for the catalog.
+- **`/options/` endpoints** for form pickers, because a paginated dropdown is unusable.
+
+Two things were caught in review and sent back to the agents:
+
+- The frontend still decided "out of stock" itself. The backend now sends `out_of_stock` and `in_stock`.
+- The frontend stored whole cursor links in the URL. It now stores only the token.
+
+The backend agent ran `EXPLAIN` on every list and added the one index that was missing (`purchase_order_newest`). It also flagged honestly that DRF's cursor can shift one row on an exact timestamp tie. This is documented, with the strict keyset fix.

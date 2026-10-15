@@ -1,6 +1,6 @@
 # API Contract v1
 
-Base path: `/api`. JSON only. No authentication. No pagination.
+Base path: `/api`. JSON only. No authentication. Every list endpoint is paginated (see Pagination).
 Quantities are decimal strings with up to 3 decimal places, e.g. `"150.000"`. Requests may send numbers or strings.
 
 ## Errors
@@ -16,6 +16,28 @@ Quantities are decimal strings with up to 3 decimal places, e.g. `"150.000"`. Re
 
 Limits: at most 100 items in any list (PO lines, delivery lines, recipe lines, supplier `ingredients`); unknown ids inside a list → `400 {"lines": ["Unknown ids: [n]."]}`.
 
+## Pagination
+
+Two styles, chosen by how the data grows:
+
+**Page numbers**, for the catalog (ingredients, suppliers, menu items): `?page=1&page_size=25`. `page_size` defaults to 25, max 100. Response:
+
+```json
+{"count": 132, "next": "/api/ingredients/?page=3", "previous": "/api/ingredients/", "results": [ ... ]}
+```
+
+`next` and `previous` are `null` at either end and keep the other query params (`page_size` only if sent). A page past the end or a non-numeric page → `404 {"detail": "Invalid page."}`. A `page_size` of 0 or not a number falls back to 25; above 100 is capped at 100. An unknown `?stock=` value or a search over 100 characters → 400. These lists also take `?search=<text>`: a case-insensitive "name contains" match, trimmed, max 100 characters.
+
+**Cursor**, for purchase orders and sales (newest first, they grow without limit and change while the page is polled): `?cursor=<opaque>&page_size=25`. `page_size` defaults to 25, max 100. Response:
+
+```json
+{"next": "/api/sales/?cursor=cD0yMDI2…", "previous": null, "results": [ ... ]}
+```
+
+There is no `count`, which avoids a `COUNT(*)` over a growing table. The client follows `next` / `previous` exactly as given. New rows arriving while you page don't shift or duplicate the rows on a page. Exception: a row with exactly the same timestamp as a page boundary, or a late-committing row older than the cursor; the strict fix is a custom keyset on `(timestamp, id)`. An invalid cursor → `404 {"detail": "Invalid cursor"}`.
+
+**Options**, for pickers in forms (selects and checklists), which need the whole set but only names: `GET /api/ingredients/options/`, `/api/suppliers/options/`, `/api/menu-items/options/` → `200 [{"id": 1, "name": "Beef"}]` ordered by name, not paginated. Ingredient options also carry `unit` and accept `?supplier=<id>` (only what that supplier supplies; an unknown supplier → `[]`, a non-numeric or non-positive id → 400).
+
 ## Idempotency (no duplicates on retry)
 
 Every request that creates something carries a client-generated id: `request_id` for purchase orders and deliveries, `external_id` for sales. It is a string of 1–64 characters (the UI sends a UUID). The client keeps the same id when it retries an attempt and makes a new one only after a success.
@@ -25,31 +47,33 @@ Every request that creates something carries a client-generated id: `request_id`
 
 ## Ingredients
 
-`GET /api/ingredients/` → `200 [Ingredient]` ordered by name
+`GET /api/ingredients/` → `200 Page[Ingredient]` ordered by name; `?search=`, and `?stock=out` for only `on_hand = 0`
+`GET /api/ingredients/summary/` → `200 {"total": 8, "in_stock": 1, "out_of_stock": 7}` (one aggregate query, for the stock page cards)
 `POST /api/ingredients/` body `{"name": "Beef", "unit": "g"}` → `201 Ingredient`
 
 ```json
-{"id": 1, "name": "Beef", "unit": "g", "on_hand": "0.000"}
+{"id": 1, "name": "Beef", "unit": "g", "on_hand": "0.000", "out_of_stock": true}
 ```
-- `unit` ∈ `g`, `ml`, `pcs`. `name` unique (case-insensitive). `on_hand` read-only.
+- `unit` ∈ `g`, `ml`, `pcs`. `name` unique (case-insensitive). `on_hand` and `out_of_stock` read-only; the UI shows stock status from `out_of_stock`, never by comparing numbers itself.
 
 ## Suppliers
 
-`GET /api/suppliers/` → `200 [Supplier]` ordered by name
+`GET /api/suppliers/` → `200 Page[Supplier]` ordered by name; `?search=`
 `POST /api/suppliers/` body `{"name": "Meat Co", "contact": "orders@meatco.test", "ingredients": [1, 3]}` → `201 Supplier`
 `GET /api/suppliers/{id}/` → `200 Supplier`
 `PATCH /api/suppliers/{id}/` body `{"ingredients": [1, 3, 4]}` → `200 Supplier`
 
 ```json
-{"id": 1, "name": "Meat Co", "contact": "orders@meatco.test", "ingredients": [1, 3]}
+{"id": 1, "name": "Meat Co", "contact": "orders@meatco.test", "ingredients": [1, 3], "supplies": [{"id": 1, "name": "Beef"}, {"id": 3, "name": "Cheddar"}]}
 ```
 - `name` unique. `contact` optional free text.
 - `ingredients` is the list of ingredient ids this supplier can supply. Optional on create (defaults to `[]`). On PATCH it **replaces** the whole list. Unknown ids → 400. An ingredient can be supplied by many suppliers.
 - PATCH may also change `name` or `contact`.
+- `supplies` is read-only: the same ingredients with names, ordered by name, so the list can show them without loading every ingredient.
 
 ## Menu items (recipes)
 
-`GET /api/menu-items/` → `200 [MenuItem]` ordered by name
+`GET /api/menu-items/` → `200 Page[MenuItem]` ordered by name; `?search=`
 `POST /api/menu-items/` → `201 MenuItem`
 
 ```json
@@ -67,8 +91,8 @@ Every request that creates something carries a client-generated id: `request_id`
 
 ## Purchase orders
 
-`GET /api/purchase-orders/` → `200 [PurchaseOrder]` newest first
-`GET /api/purchase-orders/?status=open` → only `sent` and `received`
+`GET /api/purchase-orders/` → `200 CursorPage[PurchaseOrder]` newest first
+`GET /api/purchase-orders/?status=open` → only `sent` and `received` (same cursor pagination)
 `GET /api/purchase-orders/{id}/` → `200 PurchaseOrder`
 `POST /api/purchase-orders/` body `{"request_id": "b3c1…", "supplier": 1, "lines": [{"ingredient": 1, "quantity_ordered": "5000"}]}` → `201 PurchaseOrder` in `draft` (or `200` for a repeated `request_id`, see Idempotency)
 
@@ -132,11 +156,11 @@ Response:
 - `quantity` positive integer (max 10,000). `external_id` required, unique: a retry is idempotent and deducts nothing. The same `external_id` with a different `menu_item` or `quantity` → `409 idempotency_conflict`.
 - If any ingredient lacks stock for `recipe quantity × quantity` → `409 insufficient_stock`; nothing is deducted.
 
-`GET /api/sales/` → `200 [Sale]` newest first, latest 50.
+`GET /api/sales/` → `200 CursorPage[Sale]` newest first.
 
 ## Stock
 
-Current stock is `on_hand` on `GET /api/ingredients/`. The UI polls it every 5 seconds and after every mutation.
+Current stock is `on_hand` on `GET /api/ingredients/`. The UI polls only the page on screen (and the summary) every 5 seconds and after every mutation.
 
 ## Health
 

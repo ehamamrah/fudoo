@@ -92,6 +92,7 @@ The transitions are a declarative table in `purchasing/state_machine.py`; there 
 | Which supplier sells what | Each supplier lists the ingredients it supplies. A PO line for anything else is rejected (409 `ingredient_not_supplied`), and the PO form only offers the chosen supplier's items | Stops ordering beef from the bakery. Checked only when the PO is created, so changing a supplier's list never breaks open orders. `SupplierItem` is a bare link for now; price and pack size go on it later. |
 | Editing after creation | No editing or deleting of ingredients, recipes or PO lines (a supplier's list of items is the one exception); a wrong draft PO is cancelled and recreated | The brief asks for create and list. Editing recipes would also raise history questions. |
 | Units | One unit per ingredient, no conversions | Out of scope; the recipe uses the same unit as the stock. |
+| Pagination | Purchase orders and sales use cursor pages (newest first, no `COUNT(*)`, stable while polling). Ingredients, suppliers and menu items use numbered pages with name search. Form pickers use light `/options/` endpoints (id and name only) | Orders and sales grow without limit and change while you look at them. The catalog stays in the hundreds and people need to find items by name. A paginated dropdown is unusable. |
 | Toolchain | Latest stable everywhere. TypeScript 7 type-checks the build; ESLint runs on the TS 6 API installed alongside, because typescript-eslint doesn't support TS 7 yet | Python 3.15 is only weeks old; all tests and audits pass on it. |
 | Up-to-date stock | Stock and open POs refresh every 5 s and after every change, with an "Updated Xs ago" indicator | The brief's "without having to guess". Polling is simpler than websockets and good enough for one branch. |
 | Low stock | Only "Out of stock" is shown | A real threshold needs a reorder level per ingredient; deferred. |
@@ -101,7 +102,7 @@ The transitions are a declarative table in `purchasing/state_machine.py`; there 
 
 - **Development server in Compose:** `runserver` and Vite dev with `DJANGO_DEBUG=1`. With debug off, settings refuse to start without `DJANGO_SECRET_KEY` and explicit `DJANGO_ALLOWED_HOSTS`, and turn on HSTS, SSL redirect and secure cookies (`make audit` runs Django's deploy check this way). A real deployment still needs gunicorn, a built frontend and a TLS proxy. There is no authentication, as the brief allows.
 - Quantities are capped by `Decimal(12, 3)`; a sale is capped at 10,000 items and any list at 100 items.
-- Lists aren't paginated (sales return the latest 50).
+- Catalog search is a plain case-insensitive "contains" match. With thousands of items it would need a trigram index.
 
 ## How I used AI
 
