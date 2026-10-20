@@ -1,6 +1,6 @@
 # Fudoo
 
-Inventory and purchasing service for a single-branch burger restaurant. It tracks ingredients, suppliers, recipes, purchase orders, partial deliveries and POS sales, so the owner always knows what is in the storeroom and which orders are still open.
+Inventory and purchasing service for a single-branch burger restaurant. It tracks ingredients, suppliers, recipes, purchase orders, partial deliveries and multi-line POS orders with add-ons, so the owner always knows what is in the storeroom and which orders are still open.
 
 - **Backend:** Python 3.15, Django 6.1, Django REST Framework 3.18, psycopg 3.3, PostgreSQL 18 (`fudoo-be/`)
 - **Frontend:** React 19, TypeScript 7, Vite 8, Tailwind 4, TanStack Query 5, React Router 8 (`fudoo-fe/`)
@@ -15,13 +15,13 @@ make up      # postgres :5432, API :8000, UI :5173
 make seed    # sample ingredients, suppliers with what they supply, and the Classic Burger recipe (idempotent)
 ```
 
-Open <http://localhost:5173>. Seeded stock starts at zero: create a purchase order, send it and record a delivery to bring stock in, then sell burgers from the **POS** page.
+Open <http://localhost:5173>. Seeded stock starts at zero: create a purchase order, send it and record a delivery to bring stock in, then ring up orders (burgers, extra cheese, cola) from the **POS** page.
 
 The POS can call the API directly:
 
 ```bash
-curl -X POST localhost:8000/api/sales/ -H 'Content-Type: application/json' \
-  -d '{"external_id": "pos-0001", "menu_item": 1, "quantity": 2}'
+curl -X POST localhost:8000/api/orders/ -H 'Content-Type: application/json' \
+  -d '{"external_id": "pos-0001", "lines": [{"menu_item": 1, "quantity": 2, "add_ons": [{"add_on": 1, "quantity": 1}]}, {"menu_item": 4, "quantity": 1}]}'
 ```
 
 ## Run the tests
@@ -34,7 +34,7 @@ make audit     # pip-audit, bandit, Django deploy check, npm audit, ESLint
 
 Upgrading from a checkout that ran Postgres 16: run `make reset` once. Postgres 18 uses a new data directory and can't read the old volume.
 
-The backend tests cover what has to be right: every legal and illegal PO transition, ordering an ingredient the supplier doesn't supply, partial then full receiving, over-receipt, delivery against an order that can't receive, sale deduction, insufficient stock, duplicate POS events, `on_hand` equal to the sum of the ledger, threaded race tests (sales for the last stock, concurrent deliveries, cancel against delivery, the same PO, delivery or POS event sent twice at once), a constant query count on every endpoint (no N+1), and hostile input (malformed JSON, huge numbers, oversized lists) never producing a 500.
+The backend tests cover what has to be right: every legal and illegal PO transition, ordering an ingredient the supplier doesn't supply, partial then full receiving, over-receipt, delivery against an order that can't receive, order deduction line by line, skipped lines and add-ons, competing lines for the last stock, an order with no fulfillable line, duplicate POS events, the sales-to-orders data migration, `on_hand` equal to the sum of the ledger, threaded race tests (orders for the last stock, concurrent deliveries, cancel against delivery, the same PO, delivery or POS event sent twice at once), a constant query count on every endpoint (no N+1), and hostile input (malformed JSON, huge numbers, oversized lists) never producing a 500.
 
 ## Architecture
 
@@ -42,10 +42,10 @@ A modular monolith with one Django app per module. Business rules live in each m
 
 | Module | Owns |
 |---|---|
-| `catalog` | Ingredient, Supplier, SupplierItem (who supplies what), MenuItem, RecipeLine |
-| `inventory` | StockMovement ledger, `stock.increase()` / `stock.decrease()` — the **only** code that changes `on_hand` |
+| `catalog` | Ingredient, Supplier, SupplierItem (who supplies what), MenuItem, RecipeLine, AddOn, AddOnRecipeLine |
+| `inventory` | StockMovement ledger, `stock.increase()` / `stock.decrease()` and `stock.hold()` for orders — the **only** code that changes `on_hand` |
 | `purchasing` | PurchaseOrder, POLine, Delivery, DeliveryLine, the state machine, receiving |
-| `sales` | Sale, idempotent `record_sale()` |
+| `sales` | Order, OrderLine, OrderLineAddOn, idempotent `record_order()` |
 | `core` | `DomainError` → HTTP 409 handler, shared quantity fields |
 
 The frontend has one folder per feature, and each feature has TanStack Query hooks. Pages never call `fetch` directly. The UI holds no business rules: PO buttons come from `allowed_actions` and the receive form from `can_receive`, both computed by the backend state machine. The full API is in [`docs/api-contract.md`](docs/api-contract.md).
@@ -59,14 +59,17 @@ Supplier ──< SupplierItem >────────────────�
              │              ▲                 ▲
              └──< Delivery ──< DeliveryLine   │
                                               │
-MenuItem ──< RecipeLine >─────────────────────┘
-    └──< Sale
+MenuItem ──< RecipeLine >─────────────────────┤
+    │                                         │
+AddOn ──< AddOnRecipeLine >───────────────────┘
+    │
+Order ──< OrderLine (menu item) ──< OrderLineAddOn (add-on)
 ```
 
-- `Ingredient.on_hand` is the current stock. Every change to it writes a `StockMovement` row (`+` delivery, `−` sale, with a reference such as `delivery:5`) in the same transaction, so `on_hand` always equals the sum of its movements.
+- `Ingredient.on_hand` is the current stock. Every change to it writes a `StockMovement` row (`+` delivery, `−` sale, with a reference such as `delivery:5` or `order-line:12`) in the same transaction, so `on_hand` always equals the sum of its movements.
 - `SupplierItem` links suppliers and ingredients many-to-many: a supplier lists what it supplies, and one ingredient can come from several suppliers (seeded Cheddar comes from Meat Co and Fresh Farms). A purchase order can only contain ingredients its supplier supplies.
 - Quantities are `Decimal(12, 3)` in the ingredient's unit (`g`, `ml`, `pcs`) and are sent as strings in JSON.
-- Database constraints back up the code: `on_hand >= 0`, `0 <= quantity_received <= quantity_ordered`, all quantities positive, unique `Sale.external_id`, one line per ingredient in each PO and recipe, one link per supplier and ingredient, and case-insensitive unique ingredient names.
+- Database constraints back up the code: `on_hand >= 0`, `0 <= quantity_received <= quantity_ordered`, all quantities positive, unique `Order.external_id`, one add-on per order line, one line per ingredient in each PO and recipe, one link per supplier and ingredient, and case-insensitive unique ingredient names.
 
 ## Purchase order states
 
@@ -83,16 +86,16 @@ The transitions are a declarative table in `purchasing/state_machine.py`; there 
 
 | Question | Decision | Why |
 |---|---|---|
-| A sale would take stock below zero | **Reject the whole sale** (409 `insufficient_stock`, listing each shortage). Nothing is deducted. | Stock must never go negative. If the system says there isn't enough, the number is wrong or the item can't be made, and both need attention, not a silent negative. Enforced in the service and by a DB constraint. |
+| An order would take stock below zero | **Fulfil it line by line.** A short menu item skips its line; a short add-on is dropped and the burger still served. Each skipped line or add-on carries its shortages. Only when no line fits is the order rejected (409 `insufficient_stock`) with nothing recorded. | Stock must never go negative. If the system says there isn't enough, the number is wrong or the item can't be made, and both need attention, not a silent negative. Enforced in the service and by a DB constraint. |
 | What "received" and "closed" mean | `received` = partly delivered; `closed` = fully delivered (automatic) or short-closed | Otherwise the two states would mean the same thing. |
 | Supplier will never send the rest | Manual **short-close** `received → closed` | Otherwise the order stays open forever. |
 | Cancelling | Allowed from `draft` and `sent` only | Once goods have arrived they are in stock; the order is closed instead. |
 | Over-delivery | **Rejected** (409 `over_receipt`); the whole delivery is rejected | Keeps `received ≤ ordered`. Extra goods mean amending the order. |
-| Retries and double submits | Every create carries a client-generated id (`external_id` for sales, `request_id` for POs and deliveries). A repeat returns the original (200) and changes nothing; the same id with a different payload is 409 `idempotency_conflict` | Networks retry and people double-click. Without this, a PO or delivery could be booked twice. One helper (`core/idempotency.py`) backed by a unique constraint handles all three, including concurrent duplicates. |
+| Retries and double submits | Every create carries a client-generated id (`external_id` for orders, `request_id` for POs and deliveries). A repeat returns the original (200) and changes nothing; the same id with a different payload is 409 `idempotency_conflict` | Networks retry and people double-click. Without this, a PO or delivery could be booked twice. One helper (`core/idempotency.py`) backed by a unique constraint handles all three, including concurrent duplicates. |
 | Which supplier sells what | Each supplier lists the ingredients it supplies. A PO line for anything else is rejected (409 `ingredient_not_supplied`), and the PO form only offers the chosen supplier's items | Stops ordering beef from the bakery. Checked only when the PO is created, so changing a supplier's list never breaks open orders. `SupplierItem` is a bare link for now; price and pack size go on it later. |
 | Editing after creation | No editing or deleting of ingredients, recipes or PO lines (a supplier's list of items is the one exception); a wrong draft PO is cancelled and recreated | The brief asks for create and list. Editing recipes would also raise history questions. |
 | Units | One unit per ingredient, no conversions | Out of scope; the recipe uses the same unit as the stock. |
-| Pagination | Purchase orders and sales use cursor pages (newest first, no `COUNT(*)`, stable while polling). Ingredients, suppliers and menu items use numbered pages with name search. Form pickers use light `/options/` endpoints (id and name only) | Orders and sales grow without limit and change while you look at them. The catalog stays in the hundreds and people need to find items by name. A paginated dropdown is unusable. |
+| Pagination | Purchase orders and POS orders use cursor pages (newest first, no `COUNT(*)`, stable while polling). Ingredients, suppliers, menu items and add-ons use numbered pages with name search. Form pickers use light `/options/` endpoints (id and name only) | Purchase and POS orders grow without limit and change while you look at them. The catalog stays in the hundreds and people need to find items by name. A paginated dropdown is unusable. |
 | Toolchain | Latest stable everywhere. TypeScript 7 type-checks the build; ESLint runs on the TS 6 API installed alongside, because typescript-eslint doesn't support TS 7 yet | Python 3.15 is only weeks old; all tests and audits pass on it. |
 | Up-to-date stock | Stock and open POs refresh every 5 s and after every change, with an "Updated Xs ago" indicator | The brief's "without having to guess". Polling is simpler than websockets and good enough for one branch. |
 | Low stock | Only "Out of stock" is shown | A real threshold needs a reorder level per ingredient; deferred. |
@@ -101,7 +104,7 @@ The transitions are a declarative table in `purchasing/state_machine.py`; there 
 ## Known limitations
 
 - **Development server in Compose:** `runserver` and Vite dev with `DJANGO_DEBUG=1`. With debug off, settings refuse to start without `DJANGO_SECRET_KEY` and explicit `DJANGO_ALLOWED_HOSTS`, and turn on HSTS, SSL redirect and secure cookies (`make audit` runs Django's deploy check this way). A real deployment still needs gunicorn, a built frontend and a TLS proxy. There is no authentication, as the brief allows.
-- Quantities are capped by `Decimal(12, 3)`; a sale is capped at 10,000 items and any list at 100 items.
+- Quantities are capped by `Decimal(12, 3)`; an order line is capped at 10,000 items, an add-on at 10 per item, and any list at 100 items.
 - Catalog search is a plain case-insensitive "contains" match. With thousands of items it would need a trigram index.
 
 ## How I used AI
@@ -136,5 +139,5 @@ I used Claude Code throughout: one orchestrator session and two engineer subagen
 3. **Supplier prices and pack sizes:** price and pack size on `SupplierItem`, so orders are placed in cases and converted to stock units on receipt, with a preferred supplier per ingredient.
 4. **Reorder levels:** a threshold per ingredient, low-stock alerts, and a draft PO suggested from them and the preferred supplier.
 5. **Stock history page:** the ledger already exists, so show it per ingredient.
-6. **Tenancy:** restaurant → branches, with stock, POs and sales belonging to a branch (see [`PLAN.md`](PLAN.md)).
-7. **End-to-end tests** with Playwright for the purchase and sale flows; CI running both test suites.
+6. **Tenancy:** restaurant → branches, with stock, POs and orders belonging to a branch (see [`PLAN.md`](PLAN.md)).
+7. **End-to-end tests** with Playwright for the purchase and POS order flows; CI running both test suites.

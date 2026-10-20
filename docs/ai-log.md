@@ -186,3 +186,10 @@ The AI first mapped how a sale was recorded: one menu item per `Sale`, all-or-no
 - **`/api/sales/`:** migrate existing sales to one-line orders and remove the endpoint.
 
 The contract was changed first (`Add-ons`, `Orders (POS)`), along with invariant 6 in `AGENTS.md`, the module plans and the subagent briefs. The work was then split between the backend and frontend agents.
+
+Both agents built against the contract in parallel. Review and verification:
+
+- **Shared checkout:** the frontend agent's first commit picked up the backend agent's staged deletions (a shared git index). It caught this before pushing. `AGENTS.md` now requires path-filtered commits.
+- **Idempotency gap:** the frontend always sends `add_ons: []`. That was passed to the backend agent, which made a missing `add_ons` equal to `[]` in the idempotency check and tested it.
+- **Retry race:** the backend agent's first design locked stock before inserting the order, so a concurrent retry could get `insufficient_stock` instead of the original order. It now inserts the order first and the retry waits on the unique index.
+- **End-to-end run:** against the live API: 2 burgers + extra cheese + cola with 1 spare cheddar and no cola → `partial` (burgers fulfilled, cheese skipped with its shortage, cola skipped). A retry after cola arrived still returned the original outcome; a changed payload got `idempotency_conflict`; an order with no buns got `409`. The ledger still matched `on_hand`.

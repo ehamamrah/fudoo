@@ -187,15 +187,15 @@ Response:
 Input:
 - `lines`: 1–100 lines, kept in the order sent. The same menu item may appear on several lines.
 - `quantity` (line): positive integer, max 10,000. `add_ons` optional (default `[]`), at most 10 per line, an add-on at most once per line (else 400). Add-on `quantity`: positive integer, max 10, counted **per unit** of the line (2 burgers + 1 extra cheese uses the cheese recipe twice).
-- Unknown menu item or add-on ids → `400 {"lines": ["Unknown ids: [n]."]}`.
+- Unknown menu item or add-on ids → `400 {"lines": ["Unknown ids: [n]."]}`, unknown menu items reported first. Other field errors inside lines are nested under `lines` in DRF's default shape.
 
 Fulfilment (the backend decides; the UI only shows `status` and `shortages`):
 - The stock is checked in the order of the request: line 1's menu item, then line 1's add-ons in the order sent, then line 2, and so on. Each check uses the stock left after everything earlier in the same order.
 - A line's menu item is all-or-nothing: recipe × line quantity. If any ingredient is short, the line is `skipped`, and so are all its add-ons (with empty `shortages`).
 - Each add-on is all-or-nothing: add-on recipe × add-on quantity × line quantity. If short, only that add-on is `skipped`; the line stays `fulfilled`.
-- `shortages` on a skipped line or add-on lists the short ingredients: `required` for that line or add-on, and `available` at the moment it was checked.
+- `shortages` is `[]` on everything fulfilled. On a skipped line or add-on it lists the short ingredients: `required` for that line or add-on, and `available` at the moment it was checked.
 - Order `status` is `completed` when every line and add-on is `fulfilled`, otherwise `partial`.
-- If no line's menu item can be fulfilled → `409 insufficient_stock` and nothing is recorded or deducted, so the same `external_id` can be retried later. `shortages` then lists every short ingredient once, with `required` summed over the menu items of all lines and `available` the current stock.
+- If no line's menu item can be fulfilled → `409 insufficient_stock` and nothing is recorded or deducted, so the same `external_id` can be retried later. `shortages` then lists every short ingredient once, with `required` summed over the menu items of all lines (add-ons excluded) and `available` the current stock. An ingredient may appear that no single line was short of (two lines of 1 bun against 1 in stock).
 
 Idempotency: the same `external_id` with the same lines (same order of lines, same menu items, quantities and add-ons; the order of add-ons inside a line doesn't matter) → `200` with the original order exactly as it was recorded, even if stock has changed since. The same `external_id` with different lines → `409 idempotency_conflict`.
 

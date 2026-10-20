@@ -47,5 +47,6 @@ Delivery-driven transitions: `sent→received`, `sent→closed`, `received→clo
 
 - Single branch: `main`. No PRs. Commit and push per completed module.
 - Stage only your own app directory: `git add fudoo-be/` or `git add fudoo-fe/`. Never `git add -A` or `git add .`.
+- Agents share one working tree and index. Commit with a path filter (`git commit -- fudoo-be/`) so another agent's staged files never land in your commit. Never stash, reset or discard files outside your directory; if `git pull --rebase` refuses because of them, `git fetch` and rebase only if origin is ahead.
 - Before pushing: `git pull --rebase origin main`, then `git push origin main`. If `index.lock` exists, wait and retry.
 - Conventional commits: `feat(be): ...`, `feat(fe): ...`, `test(be): ...`, `chore: ...`.
