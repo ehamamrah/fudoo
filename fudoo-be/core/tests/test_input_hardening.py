@@ -8,7 +8,10 @@ from purchasing.services import create_purchase_order, perform_action
 pytestmark = pytest.mark.django_db
 HUGE_ID = 10**30
 TOO_MANY = MAX_LIST_ITEMS + 1
-WRITE_PATHS = ["/api/ingredients/", "/api/suppliers/", "/api/menu-items/", "/api/purchase-orders/", "/api/sales/"]
+WRITE_PATHS = [
+    "/api/ingredients/", "/api/suppliers/", "/api/menu-items/", "/api/add-ons/",
+    "/api/purchase-orders/", "/api/sales/",
+]
 
 
 @pytest.fixture
@@ -90,12 +93,13 @@ def test_bad_supplier_ingredients_are_rejected(api, db, ingredients):
     assert "ingredients" in response.json()
 
 
+@pytest.mark.parametrize("path", ["/api/menu-items/", "/api/add-ons/"])
 @pytest.mark.parametrize("recipe", [
     [{"ingredient": HUGE_ID, "quantity": "1"}],
     [{"ingredient": n, "quantity": "1"} for n in range(1, TOO_MANY + 1)],
 ])
-def test_bad_recipes_are_rejected(api, db, recipe):
-    response = api.post("/api/menu-items/", {"name": "Burger", "recipe": recipe})
+def test_bad_recipes_are_rejected(api, db, path, recipe):
+    response = api.post(path, {"name": "Burger", "recipe": recipe})
     assert response.status_code == 400
     assert "recipe" in response.json()
 

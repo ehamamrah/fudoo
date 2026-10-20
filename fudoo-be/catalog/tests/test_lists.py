@@ -41,7 +41,7 @@ def test_walking_pages_returns_every_row_once(api, pantry):
     assert [row["name"] for row in walk(api, "/api/ingredients/?page_size=7")] == [p.name for p in pantry]
 
 
-@pytest.mark.parametrize("path", ["/api/ingredients/", "/api/suppliers/", "/api/menu-items/"])
+@pytest.mark.parametrize("path", ["/api/ingredients/", "/api/suppliers/", "/api/menu-items/", "/api/add-ons/"])
 def test_page_past_end_is_404(api, db, path):
     response = api.get(f"{path}?page=2")
     assert response.status_code == 404
@@ -74,7 +74,7 @@ def test_search_suppliers_and_menu_items(api, supplier, burger, beef, bun):
     assert names(api.get("/api/menu-items/?search=WRAP")) == ["Veggie Wrap"]
 
 
-@pytest.mark.parametrize("path", ["/api/ingredients/", "/api/suppliers/", "/api/menu-items/"])
+@pytest.mark.parametrize("path", ["/api/ingredients/", "/api/suppliers/", "/api/menu-items/", "/api/add-ons/"])
 def test_search_longer_than_100_is_400(api, db, path):
     assert api.get(path, {"search": "x" * 100}).status_code == 200
     response = api.get(path, {"search": "x" * 101})

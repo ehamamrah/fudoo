@@ -12,10 +12,13 @@ SIZES = [1, 6]
     ("/api/suppliers/?search=k", 3),
     ("/api/menu-items/", 4),
     ("/api/menu-items/?search=k", 4),
+    ("/api/add-ons/", 4),
+    ("/api/add-ons/?search=k", 4),
     ("/api/ingredients/options/", 1),
     ("/api/ingredients/options/?supplier=1", 1),
     ("/api/suppliers/options/", 1),
     ("/api/menu-items/options/", 1),
+    ("/api/add-ons/options/", 1),
     ("/api/ingredients/summary/", 1),
 ])
 def test_list_query_count_is_constant(api, kitchen, django_assert_num_queries, size, path, queries):
@@ -33,10 +36,11 @@ def test_supplier_detail_query_count_is_constant(api, kitchen, django_assert_num
 
 
 @pytest.mark.parametrize("size", SIZES)
-def test_create_menu_item_query_count_is_constant(api, kitchen, django_assert_num_queries, size):
+@pytest.mark.parametrize("path", ["/api/menu-items/", "/api/add-ons/"])
+def test_create_with_recipe_query_count_is_constant(api, kitchen, django_assert_num_queries, size, path):
     recipe = [{"ingredient": ingredient.id, "quantity": "1"} for ingredient in kitchen(size).ingredients]
     with django_assert_num_queries(9):
-        assert api.post("/api/menu-items/", {"name": "New", "recipe": recipe}).status_code == 201
+        assert api.post(path, {"name": "New", "recipe": recipe}).status_code == 201
 
 
 @pytest.mark.parametrize("size", SIZES)

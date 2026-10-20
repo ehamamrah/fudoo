@@ -5,7 +5,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from catalog.models import Ingredient, Supplier
-from catalog.services import create_menu_item
+from catalog.services import create_add_on, create_menu_item
 from inventory import stock
 from inventory.models import StockMovement
 
@@ -16,6 +16,10 @@ def build_burger(beef, bun, name="Classic Burger"):
         {"ingredient": bun, "quantity": Decimal("1")},
     ]
     return create_menu_item(name, recipe)
+
+
+def build_add_on(ingredient, quantity="1", name="Extra cheese"):
+    return create_add_on(name, [{"ingredient": ingredient, "quantity": Decimal(quantity)}])
 
 
 @pytest.fixture
@@ -36,6 +40,16 @@ def bun(db):
 @pytest.fixture
 def lettuce(db):
     return Ingredient.objects.create(name="Lettuce", unit="g")
+
+
+@pytest.fixture
+def cheddar(db):
+    return Ingredient.objects.create(name="Cheddar", unit="pcs")
+
+
+@pytest.fixture
+def extra_cheese(cheddar):
+    return build_add_on(cheddar)
 
 
 @pytest.fixture
@@ -76,5 +90,8 @@ def kitchen(stock_up):
         stock_up(*((ingredient, "1000") for ingredient in ingredients))
         recipe = [{"ingredient": ingredient, "quantity": Decimal("1")} for ingredient in ingredients]
         menu_item = create_menu_item(f"{tag} burger", recipe)
-        return SimpleNamespace(ingredients=ingredients, supplier=supplier, menu_item=menu_item)
+        add_on = create_add_on(f"{tag} extra", recipe)
+        return SimpleNamespace(
+            ingredients=ingredients, supplier=supplier, menu_item=menu_item, add_on=add_on
+        )
     return build

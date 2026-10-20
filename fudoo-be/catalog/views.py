@@ -4,8 +4,13 @@ from rest_framework.response import Response
 
 from catalog import services
 from catalog.filters import NameSearchFilter, OutOfStockFilter, SupplierFilter
-from catalog.models import Ingredient, MenuItem, Supplier
-from catalog.serializers import IngredientSerializer, MenuItemSerializer, SupplierSerializer
+from catalog.models import AddOn, Ingredient, MenuItem, Supplier
+from catalog.serializers import (
+    AddOnSerializer,
+    IngredientSerializer,
+    MenuItemSerializer,
+    SupplierSerializer,
+)
 
 
 class IngredientListCreate(generics.ListCreateAPIView):
@@ -32,6 +37,12 @@ class MenuItemListCreate(generics.ListCreateAPIView):
     filter_backends = [NameSearchFilter]
 
 
+class AddOnListCreate(generics.ListCreateAPIView):
+    queryset = AddOn.objects.prefetch_related("recipe__ingredient")
+    serializer_class = AddOnSerializer
+    filter_backends = [NameSearchFilter]
+
+
 class Options(generics.GenericAPIView):
     fields = ("id", "name")
 
@@ -51,6 +62,10 @@ class SupplierOptions(Options):
 
 class MenuItemOptions(Options):
     queryset = MenuItem.objects.all()
+
+
+class AddOnOptions(Options):
+    queryset = AddOn.objects.all()
 
 
 @api_view(["GET"])

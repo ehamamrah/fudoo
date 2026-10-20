@@ -2,7 +2,7 @@ from django.db.models import prefetch_related_objects
 from rest_framework import serializers
 
 from catalog import services
-from catalog.models import Ingredient, MenuItem, RecipeLine, Supplier
+from catalog.models import AddOn, Ingredient, MenuItem, Supplier
 from core.quantities import positive_quantity
 from core.validation import (
     MAX_LIST_ITEMS,
@@ -44,28 +44,36 @@ class SupplierSerializer(serializers.ModelSerializer):
         return super().to_representation(instance)
 
 
-class RecipeLineSerializer(serializers.ModelSerializer):
+class RecipeLineSerializer(serializers.Serializer):
     ingredient = PrimaryKeyField()
     ingredient_name = serializers.CharField(source="ingredient.name", read_only=True)
     unit = serializers.CharField(source="ingredient.unit", read_only=True)
     quantity = positive_quantity()
 
-    class Meta:
-        model = RecipeLine
-        fields = ["ingredient", "ingredient_name", "unit", "quantity"]
 
-
-class MenuItemSerializer(serializers.ModelSerializer):
+class WithRecipeSerializer(serializers.ModelSerializer):
     recipe = RecipeLineSerializer(many=True, allow_empty=False, max_length=MAX_LIST_ITEMS)
-
-    class Meta:
-        model = MenuItem
-        fields = ["id", "name", "recipe"]
 
     def validate_recipe(self, recipe):
         reject_duplicates(recipe, "ingredient", "An ingredient may appear only once.")
         return resolve_references(recipe, "ingredient", Ingredient.objects.all())
 
     def create(self, validated_data):
-        menu_item = services.create_menu_item(**validated_data)
-        return MenuItem.objects.prefetch_related("recipe__ingredient").get(pk=menu_item.pk)
+        owner = self.create_with_recipe(**validated_data)
+        return self.Meta.model.objects.prefetch_related("recipe__ingredient").get(pk=owner.pk)
+
+
+class MenuItemSerializer(WithRecipeSerializer):
+    create_with_recipe = staticmethod(services.create_menu_item)
+
+    class Meta:
+        model = MenuItem
+        fields = ["id", "name", "recipe"]
+
+
+class AddOnSerializer(WithRecipeSerializer):
+    create_with_recipe = staticmethod(services.create_add_on)
+
+    class Meta:
+        model = AddOn
+        fields = ["id", "name", "recipe"]

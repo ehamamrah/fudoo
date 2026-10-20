@@ -71,18 +71,48 @@ class MenuItem(models.Model):
         return self.name
 
 
-class RecipeLine(models.Model):
-    menu_item = models.ForeignKey(MenuItem, on_delete=models.CASCADE, related_name="recipe")
+class RecipeQuantity(models.Model):
     ingredient = models.ForeignKey(Ingredient, on_delete=models.PROTECT, related_name="+")
     quantity = QuantityField()
 
     class Meta:
+        abstract = True
         ordering = ["id"]
+
+
+class RecipeLine(RecipeQuantity):
+    menu_item = models.ForeignKey(MenuItem, on_delete=models.CASCADE, related_name="recipe")
+
+    class Meta(RecipeQuantity.Meta):
         constraints = [
             models.UniqueConstraint(
                 fields=["menu_item", "ingredient"], name="recipe_line_ingredient_unique"
             ),
             models.CheckConstraint(
                 condition=models.Q(quantity__gt=0), name="recipe_line_quantity_positive"
+            ),
+        ]
+
+
+class AddOn(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class AddOnRecipeLine(RecipeQuantity):
+    add_on = models.ForeignKey(AddOn, on_delete=models.CASCADE, related_name="recipe")
+
+    class Meta(RecipeQuantity.Meta):
+        constraints = [
+            models.UniqueConstraint(
+                fields=["add_on", "ingredient"], name="add_on_recipe_line_ingredient_unique"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(quantity__gt=0), name="add_on_recipe_line_quantity_positive"
             ),
         ]

@@ -11,4 +11,6 @@ urlpatterns = [
     path("suppliers/<int:pk>/", views.SupplierDetail.as_view()),
     path("menu-items/", views.MenuItemListCreate.as_view()),
     path("menu-items/options/", views.MenuItemOptions.as_view()),
+    path("add-ons/", views.AddOnListCreate.as_view()),
+    path("add-ons/options/", views.AddOnOptions.as_view()),
 ]
