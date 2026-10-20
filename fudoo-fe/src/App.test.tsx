@@ -16,7 +16,7 @@ describe("App", () => {
         <MemoryRouter><App /></MemoryRouter>
       </QueryClientProvider>,
     );
-    const labels = ["Stock", "Ingredients", "Suppliers", "Menu items", "Purchase orders", "POS Simulator"];
+    const labels = ["Stock", "Ingredients", "Suppliers", "Menu items", "Add-ons", "Purchase orders", "POS Simulator"];
     labels.forEach((label) => expect(screen.getByRole("link", { name: label })).toBeInTheDocument());
     expect(await screen.findByRole("heading", { name: "Stock" })).toBeInTheDocument();
   });

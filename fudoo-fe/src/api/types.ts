@@ -73,16 +73,21 @@ export interface RecipeLine {
   quantity: Quantity;
 }
 
-export interface MenuItem {
+export interface RecipeItem {
   id: number;
   name: string;
   recipe: RecipeLine[];
 }
 
-export interface MenuItemInput {
+export interface RecipeItemInput {
   name: string;
   recipe: { ingredient: number; quantity: Quantity }[];
 }
+
+export type MenuItem = RecipeItem;
+export type MenuItemInput = RecipeItemInput;
+export type AddOn = RecipeItem;
+export type AddOnInput = RecipeItemInput;
 
 export type PurchaseOrderStatus = "draft" | "sent" | "received" | "closed" | "cancelled";
 export type PurchaseOrderAction = "send" | "cancel" | "close";

@@ -12,6 +12,7 @@ const PosPage = lazyPage(() => import("./features/sales/PosPage"), "PosPage");
 const IngredientsPage = lazyPage(() => import("./features/ingredients/IngredientsPage"), "IngredientsPage");
 const SuppliersPage = lazyPage(() => import("./features/suppliers/SuppliersPage"), "SuppliersPage");
 const MenuItemsPage = lazyPage(() => import("./features/menu-items/MenuItemsPage"), "MenuItemsPage");
+const AddOnsPage = lazyPage(() => import("./features/add-ons/AddOnsPage"), "AddOnsPage");
 
 export const SECTIONS = ["Overview", "Catalog", "Operations"] as const;
 
@@ -26,6 +27,7 @@ export const routes: AppRoute[] = [
   { path: "/ingredients", element: <IngredientsPage />, nav: { label: "Ingredients", icon: "ingredients", section: "Catalog" } },
   { path: "/suppliers", element: <SuppliersPage />, nav: { label: "Suppliers", icon: "suppliers", section: "Catalog" } },
   { path: "/menu-items", element: <MenuItemsPage />, nav: { label: "Menu items", icon: "menu", section: "Catalog" } },
+  { path: "/add-ons", element: <AddOnsPage />, nav: { label: "Add-ons", icon: "addOns", section: "Catalog" } },
   { path: "/purchase-orders", element: <PurchaseOrdersPage />, nav: { label: "Purchase orders", icon: "orders", section: "Operations" } },
   { path: "/purchase-orders/:id", element: <PurchaseOrderDetailPage /> },
   { path: "/pos", element: <PosPage />, nav: { label: "POS Simulator", icon: "pos", section: "Operations" } },
