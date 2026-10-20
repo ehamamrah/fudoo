@@ -125,24 +125,44 @@ export interface DeliveryInput {
   lines: { line: number; quantity: Quantity }[];
 }
 
-export interface Sale {
-  id: number;
-  external_id: string;
-  menu_item: number;
-  menu_item_name: string;
-  quantity: number;
-  sold_at: string;
-}
-
-export interface SaleInput {
-  external_id: string;
-  menu_item: number;
-  quantity: number;
-}
-
 export interface Shortage {
   ingredient: number;
   name: string;
   required: Quantity;
   available: Quantity;
+}
+
+export type OrderStatus = "completed" | "partial";
+export type FulfilmentStatus = "fulfilled" | "skipped";
+
+export interface OrderAddOn {
+  id: number;
+  add_on: number;
+  add_on_name: string;
+  quantity: number;
+  status: FulfilmentStatus;
+  shortages: Shortage[];
+}
+
+export interface OrderLine {
+  id: number;
+  menu_item: number;
+  menu_item_name: string;
+  quantity: number;
+  status: FulfilmentStatus;
+  shortages: Shortage[];
+  add_ons: OrderAddOn[];
+}
+
+export interface Order {
+  id: number;
+  external_id: string;
+  status: OrderStatus;
+  ordered_at: string;
+  lines: OrderLine[];
+}
+
+export interface OrderInput {
+  external_id: string;
+  lines: { menu_item: number; quantity: number; add_ons: { add_on: number; quantity: number }[] }[];
 }

@@ -31,7 +31,7 @@ describe("PageNumberPagination", () => {
 describe("CursorPagination", () => {
   it("follows the next and previous links as given", async () => {
     const onCursor = vi.fn();
-    const data = cursorPage([], { next: "/api/sales/?cursor=n&page_size=25", previous: "/api/sales/?cursor=p" });
+    const data = cursorPage([], { next: "/api/orders/?cursor=n&page_size=25", previous: "/api/orders/?cursor=p" });
     render(<CursorPagination data={data} busy={false} onCursor={onCursor} />);
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
     await userEvent.click(screen.getByRole("button", { name: "Previous" }));
@@ -40,7 +40,7 @@ describe("CursorPagination", () => {
 
   it("goes back to the first page when the previous link has no cursor", async () => {
     const onCursor = vi.fn();
-    render(<CursorPagination data={cursorPage([], { previous: "/api/sales/" })} busy={false} onCursor={onCursor} />);
+    render(<CursorPagination data={cursorPage([], { previous: "/api/orders/" })} busy={false} onCursor={onCursor} />);
     await userEvent.click(screen.getByRole("button", { name: "Previous" }));
     expect(onCursor).toHaveBeenCalledWith(null);
   });

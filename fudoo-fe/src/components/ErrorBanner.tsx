@@ -7,7 +7,7 @@ function messageOf(error: unknown): string {
   return "Something went wrong.";
 }
 
-function ShortageList({ shortages }: { shortages: Shortage[] }) {
+export function ShortageList({ shortages }: { shortages: Shortage[] }) {
   return (
     <ul className="mt-1 list-disc pl-5">
       {shortages.map((shortage) => (

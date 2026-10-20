@@ -1,5 +1,5 @@
 import type { PurchaseOrderStatus } from "../../api/types";
-import { Badge, type Tone } from "../../components/Badge";
+import { StatusBadge as Status, type Tone } from "../../components/Badge";
 
 const tones: Record<PurchaseOrderStatus, Tone> = {
   draft: "gray",
@@ -10,5 +10,5 @@ const tones: Record<PurchaseOrderStatus, Tone> = {
 };
 
 export function StatusBadge({ status }: { status: PurchaseOrderStatus }) {
-  return <Badge tone={tones[status]}><span className="capitalize">{status}</span></Badge>;
+  return <Status status={status} tones={tones} />;
 }

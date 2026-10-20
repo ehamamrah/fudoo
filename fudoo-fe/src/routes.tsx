@@ -8,7 +8,7 @@ function lazyPage<K extends string>(load: () => Promise<Record<K, ComponentType>
 const StockPage = lazyPage(() => import("./features/stock/StockPage"), "StockPage");
 const PurchaseOrdersPage = lazyPage(() => import("./features/purchase-orders/PurchaseOrdersPage"), "PurchaseOrdersPage");
 const PurchaseOrderDetailPage = lazyPage(() => import("./features/purchase-orders/PurchaseOrderDetailPage"), "PurchaseOrderDetailPage");
-const PosPage = lazyPage(() => import("./features/sales/PosPage"), "PosPage");
+const PosPage = lazyPage(() => import("./features/orders/PosPage"), "PosPage");
 const IngredientsPage = lazyPage(() => import("./features/ingredients/IngredientsPage"), "IngredientsPage");
 const SuppliersPage = lazyPage(() => import("./features/suppliers/SuppliersPage"), "SuppliersPage");
 const MenuItemsPage = lazyPage(() => import("./features/menu-items/MenuItemsPage"), "MenuItemsPage");

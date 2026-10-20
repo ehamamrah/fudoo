@@ -18,3 +18,7 @@ export function Badge({ tone = "gray", children }: { tone?: Tone; children: Reac
     </span>
   );
 }
+
+export function StatusBadge<S extends string>({ status, tones }: { status: S; tones: Record<S, Tone> }) {
+  return <Badge tone={tones[status]}><span className="capitalize">{status}</span></Badge>;
+}

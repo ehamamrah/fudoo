@@ -28,8 +28,8 @@ describe("api client", () => {
   it("maps a 409 insufficient_stock body to ApiError with code, detail and shortages", async () => {
     const shortages = [{ ingredient: 1, name: "Beef", required: "300.000", available: "120.000" }];
     const body = { code: "insufficient_stock", detail: "Not enough stock.", shortages };
-    mockApi({ "POST /api/sales/": { status: 409, body } });
-    const error = await caught(post("/sales/", {}));
+    mockApi({ "POST /api/orders/": { status: 409, body } });
+    const error = await caught(post("/orders/", {}));
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({ status: 409, code: "insufficient_stock", detail: "Not enough stock.", shortages });
     expect(error.message).toBe("Not enough stock.");
@@ -60,8 +60,8 @@ describe("api client", () => {
   });
 
   it("falls back to a status message for empty error bodies", async () => {
-    mockApi({ "GET /api/sales/": { status: 502 } });
-    expect((await caught(get("/sales/"))).detail).toBe("Request failed with status 502");
+    mockApi({ "GET /api/orders/": { status: 502 } });
+    expect((await caught(get("/orders/"))).detail).toBe("Request failed with status 502");
   });
 });
 
@@ -72,9 +72,9 @@ describe("pagination helpers", () => {
   });
 
   it.each([
-    ["/api/sales/?cursor=cD0y", "cD0y"],
+    ["/api/orders/?cursor=cD0y", "cD0y"],
     ["/api/purchase-orders/?cursor=x%3D&status=open", "x="],
-    ["/api/sales/", null],
+    ["/api/orders/", null],
     [null, null],
   ])("reads the cursor token from %s", (link, token) => {
     expect(cursorOf(link)).toBe(token);
