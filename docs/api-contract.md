@@ -14,13 +14,13 @@ Quantities are decimal strings with up to 3 decimal places, e.g. `"150.000"`. Re
 409 codes: `invalid_transition`, `po_not_receivable`, `over_receipt`, `insufficient_stock`, `ingredient_not_supplied`, `idempotency_conflict`.
 `insufficient_stock` additionally carries `"shortages": [{"ingredient": 1, "name": "Beef", "required": "300.000", "available": "120.000"}]`.
 
-Limits: at most 100 items in any list (PO lines, delivery lines, recipe lines, supplier `ingredients`); unknown ids inside a list → `400 {"lines": ["Unknown ids: [n]."]}`.
+Limits: at most 100 items in any list (PO lines, delivery lines, recipe lines, order lines, supplier `ingredients`); unknown ids inside a list → `400 {"lines": ["Unknown ids: [n]."]}`.
 
 ## Pagination
 
 Two styles, chosen by how the data grows:
 
-**Page numbers**, for the catalog (ingredients, suppliers, menu items): `?page=1&page_size=25`. `page_size` defaults to 25, max 100. Response:
+**Page numbers**, for the catalog (ingredients, suppliers, menu items, add-ons): `?page=1&page_size=25`. `page_size` defaults to 25, max 100. Response:
 
 ```json
 {"count": 132, "next": "/api/ingredients/?page=3", "previous": "/api/ingredients/", "results": [ ... ]}
@@ -28,19 +28,19 @@ Two styles, chosen by how the data grows:
 
 `next` and `previous` are `null` at either end and keep the other query params (`page_size` only if sent). A page past the end or a non-numeric page → `404 {"detail": "Invalid page."}`. A `page_size` of 0 or not a number falls back to 25; above 100 is capped at 100. An unknown `?stock=` value or a search over 100 characters → 400. These lists also take `?search=<text>`: a case-insensitive "name contains" match, trimmed, max 100 characters.
 
-**Cursor**, for purchase orders and sales (newest first, they grow without limit and change while the page is polled): `?cursor=<opaque>&page_size=25`. `page_size` defaults to 25, max 100. Response:
+**Cursor**, for purchase orders and orders (newest first, they grow without limit and change while the page is polled): `?cursor=<opaque>&page_size=25`. `page_size` defaults to 25, max 100. Response:
 
 ```json
-{"next": "/api/sales/?cursor=cD0yMDI2…", "previous": null, "results": [ ... ]}
+{"next": "/api/orders/?cursor=cD0yMDI2…", "previous": null, "results": [ ... ]}
 ```
 
 There is no `count`, which avoids a `COUNT(*)` over a growing table. The client follows `next` / `previous` exactly as given. New rows arriving while you page don't shift or duplicate the rows on a page. Exception: a row with exactly the same timestamp as a page boundary, or a late-committing row older than the cursor; the strict fix is a custom keyset on `(timestamp, id)`. An invalid cursor → `404 {"detail": "Invalid cursor"}`.
 
-**Options**, for pickers in forms (selects and checklists), which need the whole set but only names: `GET /api/ingredients/options/`, `/api/suppliers/options/`, `/api/menu-items/options/` → `200 [{"id": 1, "name": "Beef"}]` ordered by name, not paginated. Ingredient options also carry `unit` and accept `?supplier=<id>` (only what that supplier supplies; an unknown supplier → `[]`, a non-numeric or non-positive id → 400).
+**Options**, for pickers in forms (selects and checklists), which need the whole set but only names: `GET /api/ingredients/options/`, `/api/suppliers/options/`, `/api/menu-items/options/`, `/api/add-ons/options/` → `200 [{"id": 1, "name": "Beef"}]` ordered by name, not paginated. Ingredient options also carry `unit` and accept `?supplier=<id>` (only what that supplier supplies; an unknown supplier → `[]`, a non-numeric or non-positive id → 400).
 
 ## Idempotency (no duplicates on retry)
 
-Every request that creates something carries a client-generated id: `request_id` for purchase orders and deliveries, `external_id` for sales. It is a string of 1–64 characters (the UI sends a UUID). The client keeps the same id when it retries an attempt and makes a new one only after a success.
+Every request that creates something carries a client-generated id: `request_id` for purchase orders and deliveries, `external_id` for orders. It is a string of 1–64 characters (the UI sends a UUID). The client keeps the same id when it retries an attempt and makes a new one only after a success.
 
 - Same id + same payload → the original result with `200`. Nothing is created or applied twice, including when the two requests arrive concurrently.
 - Same id + a different payload → `409 idempotency_conflict`. Nothing changes.
@@ -142,21 +142,66 @@ Every request that creates something carries a client-generated id: `request_id`
 - Quantity above outstanding → `409 over_receipt`; nothing is applied.
 - Stock increases by the quantities received. Status becomes `closed` when every line is fully received, otherwise `received`.
 
-## Sales (POS)
+## Add-ons
 
-`POST /api/sales/` → `201 Sale` (new) or `200 Sale` (same `external_id` already recorded)
+`GET /api/add-ons/` → `200 Page[AddOn]` ordered by name; `?search=`
+`GET /api/add-ons/options/` → `200 [{"id": 1, "name": "Extra cheese"}]` (see Options)
+`POST /api/add-ons/` → `201 AddOn`
 
 ```json
-{"external_id": "pos-2026-10-15-0001", "menu_item": 1, "quantity": 2}
+{"id": 1, "name": "Extra cheese", "recipe": [{"ingredient": 3, "ingredient_name": "Cheddar", "unit": "pcs", "quantity": "1.000"}]}
+```
+- Request body and rules are the same as menu items: `{"name": "...", "recipe": [{"ingredient": 3, "quantity": "1"}]}`, `recipe` non-empty, quantity > 0, an ingredient at most once, `name` unique.
+- An add-on is never sold alone. Any add-on may be attached to any order line.
+
+## Orders (POS)
+
+`POST /api/orders/` → `201 Order` (new) or `200 Order` (same `external_id` already recorded)
+
+```json
+{"external_id": "pos-2026-10-20-0042", "lines": [
+  {"menu_item": 1, "quantity": 2, "add_ons": [{"add_on": 1, "quantity": 1}]},
+  {"menu_item": 4, "quantity": 1}
+]}
 ```
 Response:
 ```json
-{"id": 3, "external_id": "pos-2026-10-15-0001", "menu_item": 1, "menu_item_name": "Classic Burger", "quantity": 2, "sold_at": "2026-10-15T12:00:00Z"}
+{
+  "id": 7,
+  "external_id": "pos-2026-10-20-0042",
+  "status": "partial",
+  "ordered_at": "2026-10-20T12:00:00Z",
+  "lines": [
+    {
+      "id": 12, "menu_item": 1, "menu_item_name": "Classic Burger", "quantity": 2, "status": "fulfilled", "shortages": [],
+      "add_ons": [
+        {"id": 3, "add_on": 1, "add_on_name": "Extra cheese", "quantity": 1, "status": "skipped",
+         "shortages": [{"ingredient": 3, "name": "Cheddar", "required": "2.000", "available": "1.000"}]}
+      ]
+    },
+    {"id": 13, "menu_item": 4, "menu_item_name": "Cola", "quantity": 1, "status": "fulfilled", "shortages": [], "add_ons": []}
+  ]
+}
 ```
-- `quantity` positive integer (max 10,000). `external_id` required, unique: a retry is idempotent and deducts nothing. The same `external_id` with a different `menu_item` or `quantity` → `409 idempotency_conflict`.
-- If any ingredient lacks stock for `recipe quantity × quantity` → `409 insufficient_stock`; nothing is deducted.
 
-`GET /api/sales/` → `200 CursorPage[Sale]` newest first.
+Input:
+- `lines`: 1–100 lines, kept in the order sent. The same menu item may appear on several lines.
+- `quantity` (line): positive integer, max 10,000. `add_ons` optional (default `[]`), at most 10 per line, an add-on at most once per line (else 400). Add-on `quantity`: positive integer, max 10, counted **per unit** of the line (2 burgers + 1 extra cheese uses the cheese recipe twice).
+- Unknown menu item or add-on ids → `400 {"lines": ["Unknown ids: [n]."]}`.
+
+Fulfilment (the backend decides; the UI only shows `status` and `shortages`):
+- The stock is checked in the order of the request: line 1's menu item, then line 1's add-ons in the order sent, then line 2, and so on. Each check uses the stock left after everything earlier in the same order.
+- A line's menu item is all-or-nothing: recipe × line quantity. If any ingredient is short, the line is `skipped`, and so are all its add-ons (with empty `shortages`).
+- Each add-on is all-or-nothing: add-on recipe × add-on quantity × line quantity. If short, only that add-on is `skipped`; the line stays `fulfilled`.
+- `shortages` on a skipped line or add-on lists the short ingredients: `required` for that line or add-on, and `available` at the moment it was checked.
+- Order `status` is `completed` when every line and add-on is `fulfilled`, otherwise `partial`.
+- If no line's menu item can be fulfilled → `409 insufficient_stock` and nothing is recorded or deducted, so the same `external_id` can be retried later. `shortages` then lists every short ingredient once, with `required` summed over the menu items of all lines and `available` the current stock.
+
+Idempotency: the same `external_id` with the same lines (same order of lines, same menu items, quantities and add-ons; the order of add-ons inside a line doesn't matter) → `200` with the original order exactly as it was recorded, even if stock has changed since. The same `external_id` with different lines → `409 idempotency_conflict`.
+
+`GET /api/orders/` → `200 CursorPage[Order]` newest first, with lines and add-ons embedded.
+
+`/api/sales/` is removed. Sales recorded before this change appear as one-line `completed` orders with the same `external_id` and `ordered_at` equal to their old `sold_at`.
 
 ## Stock
 

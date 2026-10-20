@@ -15,10 +15,10 @@ Settings read `DATABASE_URL` from the environment (use `dj-database-url`).
 
 One Django project `config/` and one app per bounded module, each owning its models, services, serializers, views, urls and tests:
 
-- `catalog` — Ingredient, Supplier, MenuItem, RecipeLine
+- `catalog` — Ingredient, Supplier, MenuItem, RecipeLine, AddOn, AddOnRecipeLine
 - `inventory` — StockMovement and the stock service (`increase`, `decrease`) — the only code allowed to change `on_hand`
 - `purchasing` — PurchaseOrder, POLine, Delivery, DeliveryLine, the state machine, receiving service
-- `sales` — Sale and the record-sale service
+- `sales` — Order, OrderLine, OrderLineAddOn and the record-order service (line-by-line fulfilment, AGENTS.md invariant 6)
 
 Layering: views are thin (parse → call service → serialize). Business rules live in `services.py`. Serializers validate shape, not business rules.
 Domain errors are exceptions subclassing one `DomainError(code, detail)` mapped to 409 by a single custom DRF exception handler.
@@ -28,13 +28,14 @@ The state machine is a declarative transition table, not a chain of ifs.
 
 - Every stock-changing service runs in `transaction.atomic()` and locks affected rows with `select_for_update()`, ingredients ordered by id to avoid deadlocks.
 - `Ingredient.on_hand` has a `CheckConstraint(on_hand >= 0)`. POLine has a check constraint `0 <= quantity_received <= quantity_ordered`.
-- `Sale.external_id` is unique; a duplicate returns the existing sale without touching stock.
+- `Order.external_id` is unique; a duplicate returns the existing order as recorded without touching stock.
+- Order allocation locks every involved ingredient once, in id order, then decides each line and add-on in memory. Never lock per line.
 - Use `Decimal` everywhere, `DecimalField(max_digits=12, decimal_places=3)`.
 
 ## Tests (pytest, against Postgres via docker compose)
 
 Test services first, then one API test per endpoint for the contract shape and status codes. Must cover:
-every legal and illegal PO transition; partial then full delivery; auto-close; over-receipt rejected with nothing applied; delivery on draft/closed/cancelled rejected; sale deducts recipe × quantity; insufficient stock rejected with nothing deducted; duplicate external_id is idempotent; `on_hand` equals sum of movements after mixed operations; a concurrent test (threads + `transaction=True`) showing two sales racing for the last stock cannot both succeed.
+every legal and illegal PO transition; partial then full delivery; auto-close; over-receipt rejected with nothing applied; delivery on draft/closed/cancelled rejected; order lines deduct recipe × quantity and add-ons per unit; short lines and add-ons are skipped per AGENTS.md invariant 6; an order with no fulfillable line is rejected with nothing written; duplicate external_id is idempotent; `on_hand` equals sum of movements after mixed operations; a concurrent test (threads + `transaction=True`) showing two orders racing for the last stock cannot both fulfil it.
 
 ## Deliverables
 

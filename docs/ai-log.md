@@ -173,3 +173,16 @@ Two things were caught in review and sent back to the agents:
 - The frontend stored whole cursor links in the URL. It now stores only the token.
 
 The backend agent ran `EXPLAIN` on every list and added the one index that was missing (`purchase_order_newest`). It also flagged honestly that DRF's cursor can shift one row on an exact timestamp tie. This is documented, with the strict keyset fix.
+
+### Prompt 13 — multi-line orders with add-ons
+
+> Plan multi-line orders: a customer orders 2 burgers + extra cheese + cola, and the order still goes through if an item isn't available.
+
+The AI first mapped how a sale was recorded: one menu item per `Sale`, all-or-nothing, no add-ons. It then proposed a plan and asked four questions instead of guessing. The answers changed the design:
+
+- **Short add-on:** drop only the add-on and serve the burger (the AI had recommended skipping the whole line).
+- **Partial fulfilment:** always on, with no client flag.
+- **Add-on scope:** any add-on on any menu item (the AI had recommended an allowed list per item).
+- **`/api/sales/`:** migrate existing sales to one-line orders and remove the endpoint.
+
+The contract was changed first (`Add-ons`, `Orders (POS)`), along with invariant 6 in `AGENTS.md`, the module plans and the subagent briefs. The work was then split between the backend and frontend agents.

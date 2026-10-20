@@ -16,6 +16,7 @@ Sample stories, ready to pick up:
 
 - **E4-1 Ingest POS sale webhook.** *As an owner, I want sales from my POS to reduce stock automatically.* AC: signed webhook verified; `(branch, pos_event_id)` unique so retries never deduct twice; unmapped menu item → event parked in a "needs mapping" queue, not dropped; p95 < 300 ms. Tests: replay the same event 3×, out-of-order events, unknown item.
 - **E5-1 Stock count.** *As a manager, I want to enter what I physically counted so the system matches the shelf.* AC: count per ingredient creates an `adjustment` movement for the difference; variance report by ingredient and value; counts are immutable once submitted.
+- **E4-2 Multi-line orders with add-ons.** *As an owner, I want a whole customer order (2 burgers + extra cheese + cola) to reduce stock in one go, and still go through when one item is out.* AC: one order with many lines and per-line add-ons; each line's item is all-or-nothing, each add-on on its own; a short item skips its line, a short add-on is dropped and the burger is still served; nothing is recorded if no line fits; the result says what was skipped and why; idempotent on `external_id`. Tests: competing lines for the last beef, short add-on, every line short, retry after stock changed. Status: in build (Oct 2026).
 - **E3-4 Short-close a PO.** *As a manager, I want to close an order the supplier will never complete.* AC: only from `received`; reason required; outstanding quantity shown as "not delivered" on the supplier report.
 
 ## 2. First release

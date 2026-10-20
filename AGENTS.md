@@ -21,7 +21,8 @@ Neither side changes it unilaterally: propose a change in your report and the or
 3. `0 <= quantity_received <= quantity_ordered` on every purchase order line.
 4. Purchase order status changes only through the state machine. No direct `status` writes anywhere else.
 5. Quantities are `Decimal`, never float. Serialized as strings in JSON.
-6. A sale is all-or-nothing: either every recipe ingredient is deducted, or nothing is.
+6. An order is fulfilled line by line, in request order. A line's menu item is all-or-nothing (recipe × quantity); each add-on on it is all-or-nothing on its own. A short menu item skips its line and that line's add-ons; a short add-on skips only itself. If no line can be fulfilled, nothing is recorded (`409 insufficient_stock`).
+7. A recorded order never changes: its line and add-on outcomes are final, and an idempotent retry returns them as recorded.
 
 ## Purchase order state machine
 
