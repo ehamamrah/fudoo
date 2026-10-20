@@ -22,6 +22,11 @@ def build_add_on(ingredient, quantity="1", name="Extra cheese"):
     return create_add_on(name, [{"ingredient": ingredient, "quantity": Decimal(quantity)}])
 
 
+def order_line(menu_item, quantity=1, *add_ons):
+    choices = [{"add_on": add_on, "quantity": count} for add_on, count in add_ons]
+    return {"menu_item": menu_item, "quantity": quantity, "add_ons": choices}
+
+
 @pytest.fixture
 def api():
     return APIClient()

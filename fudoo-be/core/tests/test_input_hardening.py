@@ -10,7 +10,7 @@ HUGE_ID = 10**30
 TOO_MANY = MAX_LIST_ITEMS + 1
 WRITE_PATHS = [
     "/api/ingredients/", "/api/suppliers/", "/api/menu-items/", "/api/add-ons/",
-    "/api/purchase-orders/", "/api/sales/",
+    "/api/purchase-orders/", "/api/orders/",
 ]
 
 
@@ -108,7 +108,7 @@ def test_bad_recipes_are_rejected(api, db, path, recipe):
     ("/api/ingredients/", {"name": "x" * 101, "unit": "g"}, "name"),
     ("/api/ingredients/", {"name": "a\x00b", "unit": "g"}, "name"),
     ("/api/suppliers/", {"name": "Veg", "contact": "x" * 256}, "contact"),
-    ("/api/sales/", {"external_id": "a", "menu_item": 1, "quantity": 1.5}, "quantity"),
+    ("/api/orders/", {"external_id": "a\x00b", "lines": [{"menu_item": 1, "quantity": 1}]}, "external_id"),
 ])
 def test_oversized_or_invalid_strings_are_rejected(api, db, path, body, field):
     response = api.post(path, body)

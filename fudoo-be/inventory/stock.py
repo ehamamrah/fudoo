@@ -5,41 +5,73 @@ from core.quantities import format_quantity
 from inventory.errors import InsufficientStock
 from inventory.models import StockMovement
 
+INCREASE = 1
+DECREASE = -1
+
 
 @transaction.atomic
 def increase(quantities, reason, reference):
-    _apply(_lock(quantities), quantities, 1, reason, reference)
+    hold(quantities).deposit([(reference, quantities)], reason)
 
 
 @transaction.atomic
 def decrease(quantities, reason, reference):
-    ingredients = _lock(quantities)
-    shortages = [_shortage(i, quantities[i.id]) for i in ingredients if i.on_hand < quantities[i.id]]
+    held = hold(quantities)
+    shortages = held.reserve(quantities)
     if shortages:
         raise InsufficientStock(shortages)
-    _apply(ingredients, quantities, -1, reason, reference)
+    held.withdraw([(reference, quantities)], reason)
 
 
-def _lock(quantities):
-    return list(Ingredient.objects.select_for_update().filter(id__in=quantities).order_by("id"))
+def hold(ingredient_ids):
+    """Locks the ingredients until the caller's transaction ends, in id order so concurrent holds never deadlock."""
+    locked = Ingredient.objects.select_for_update().filter(id__in=ingredient_ids).order_by("id")
+    return StockHold(list(locked))
 
 
-def _apply(ingredients, quantities, sign, reason, reference):
-    movements = []
-    for ingredient in ingredients:
-        delta = sign * quantities[ingredient.id]
-        ingredient.on_hand += delta
-        movements.append(StockMovement(
-            ingredient=ingredient, quantity=delta, reason=reason, reference=reference
-        ))
-    Ingredient.objects.bulk_update(ingredients, ["on_hand"])
-    StockMovement.objects.bulk_create(movements)
+class StockHold:
+    def __init__(self, ingredients):
+        self._ingredients = {ingredient.id: ingredient for ingredient in ingredients}
+        self._remaining = {ingredient.id: ingredient.on_hand for ingredient in ingredients}
+
+    def shortages(self, quantities):
+        return [
+            _shortage(self._ingredients[pk], required, self._remaining[pk])
+            for pk, required in sorted(quantities.items())
+            if self._remaining[pk] < required
+        ]
+
+    def reserve(self, quantities):
+        """Takes the quantities from the remaining stock only if every one is covered; returns the shortages otherwise."""
+        shortages = self.shortages(quantities)
+        if not shortages:
+            for pk, required in quantities.items():
+                self._remaining[pk] -= required
+        return shortages
+
+    def withdraw(self, changes, reason):
+        self._write(changes, reason, DECREASE)
+
+    def deposit(self, changes, reason):
+        self._write(changes, reason, INCREASE)
+
+    def _write(self, changes, reason, sign):
+        movements = [
+            StockMovement(ingredient_id=pk, quantity=sign * quantity, reason=reason, reference=reference)
+            for reference, quantities in changes
+            for pk, quantity in quantities.items()
+        ]
+        for movement in movements:
+            self._ingredients[movement.ingredient_id].on_hand += movement.quantity
+        touched = sorted({movement.ingredient_id for movement in movements})
+        Ingredient.objects.bulk_update([self._ingredients[pk] for pk in touched], ["on_hand"])
+        StockMovement.objects.bulk_create(movements)
 
 
-def _shortage(ingredient, required):
+def _shortage(ingredient, required, available):
     return {
         "ingredient": ingredient.id,
         "name": ingredient.name,
         "required": format_quantity(required),
-        "available": format_quantity(ingredient.on_hand),
+        "available": format_quantity(available),
     }

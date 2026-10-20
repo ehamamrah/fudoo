@@ -2,12 +2,14 @@ from decimal import Decimal
 
 import pytest
 
+from conftest import order_line
+
 from core.testing import RACE_ROUNDS, new_id, outcome_kinds, race
 from inventory.tests.ledger import assert_ledger_matches
 from purchasing.errors import InvalidTransition, PONotReceivable
 from purchasing.models import Delivery, PurchaseOrder, Status
 from purchasing.services import create_purchase_order, perform_action, receive_delivery
-from sales.services import record_sale
+from sales.services import record_order
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -57,12 +59,13 @@ def assert_single_winner(order, cancelled, delivered, beef):
         assert beef.on_hand == Decimal("40")
 
 
-def test_delivery_racing_sale_keeps_ledger_consistent(supplier, fresh_burger, stock_up):
+def test_delivery_racing_order_keeps_ledger_consistent(supplier, fresh_burger, stock_up):
     for round_ in range(RACE_ROUNDS):
         burger, beef, bun = fresh_burger(round_)
         stock_up((beef, "150"), (bun, "1"))
         order, (line,) = sent_order(supplier, (beef, "500"))
-        outcomes = race(lambda: record_sale(f"sale-{round_}", burger, 1), deliver(order, line, "500"))
+        sell = lambda: record_order(f"order-{round_}", [order_line(burger)])
+        outcomes = race(sell, deliver(order, line, "500"))
         assert outcome_kinds(outcomes) == ["tuple", "tuple"]
         assert_ledger_matches(beef, bun)
         assert (beef.on_hand, bun.on_hand) == (Decimal("500"), 0)
